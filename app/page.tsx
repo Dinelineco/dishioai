@@ -21,12 +21,11 @@ export default function Home() {
 
                 {/* Hero Background Image */}
                 <div className="absolute inset-0 opacity-50">
-                    <Image
-                        src="/images/IMG_1284.jpg"
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                        src="/images/IMG_1294 (1).jpg"
                         alt="Rebellion Italian Dining"
-                        fill
-                        className="object-cover"
-                        priority
+                        className="absolute inset-0 w-full h-full object-cover"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-matte-black via-matte-black/40 to-black/60" />
                 </div>
@@ -87,6 +86,41 @@ export default function Home() {
                         "We're rebelling against the ordinary Italian dinner. This is distinct, bold, and unapologetically romantic."
                     </h2>
                     <div className="w-24 h-1 bg-rebellion-red mx-auto" />
+                </div>
+            </section>
+
+            {/* Video Section */}
+            <section className="py-24 px-6 bg-matte-black">
+                <div className="max-w-7xl mx-auto">
+                    <motion.div
+                        initial={{ opacity: 0, y: 30 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.8 }}
+                        className="text-center mb-12"
+                    >
+                        <h2 className="font-display text-4xl md:text-5xl font-bold mb-4 text-white">
+                            Experience the <span className="text-rebellion-red">Rebellion</span>
+                        </h2>
+                        <p className="font-serif text-xl text-saffron-gold italic">See what awaits you</p>
+                    </motion.div>
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.98 }}
+                        whileInView={{ opacity: 1, scale: 1 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.6 }}
+                        className="flex justify-center"
+                    >
+                        <div className="w-full max-w-sm aspect-[9/16] rounded-xl overflow-hidden border-2 border-rebellion-red/30 shadow-2xl shadow-rebellion-red/10">
+                            <iframe
+                                src="https://www.youtube.com/embed/MmdJZI6GvTg?feature=share"
+                                title="Rebellion Beachside Bar & Bistro Experience"
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                allowFullScreen
+                                className="w-full h-full"
+                            />
+                        </div>
+                    </motion.div>
                 </div>
             </section>
 
