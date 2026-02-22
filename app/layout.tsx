@@ -1,22 +1,17 @@
-import type { Metadata } from "next";
-import "./globals.css";
-import FacebookPixel from "@/components/FacebookPixel";
+import type { Metadata } from 'next';
+import './globals.css';
+import { AppProvider } from '@/context/AppContext';
 
 export const metadata: Metadata = {
-    title: "A Rebel's Romance | February Italian Pop-Up",
-    description: "Experience handmade pasta and Italian romance at Rebellion Beachside Bar & Bistro. February only.",
+    title: 'Dishio AI — Your Restaurant’s AI Growth Engine',
+    description: 'AI-powered growth engine for modern restaurant marketing.',
 };
 
-export default function RootLayout({
-    children,
-}: Readonly<{
-    children: React.ReactNode;
-}>) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
     return (
         <html lang="en">
-            <body className="bg-void antialiased">
-                <FacebookPixel />
-                {children}
+            <body className="bg-[#050505] antialiased">
+                <AppProvider>{children}</AppProvider>
             </body>
         </html>
     );
