@@ -12,6 +12,16 @@ export interface RestaurantClient {
 export const mockClients: RestaurantClient[] = [
     {
         id: '1',
+        clientCode: 'D-013',
+        name: 'Baracoa Cuban Restaurant',
+        dailySpend: 65,
+        roas: 1.83,
+        strategySummary: 'Baracoa Cuban Restaurant (D-013) Google Ads performance optimization. Focus on high-intent search terms and geographic targeting.',
+        status: 'active',
+        lastUpdated: '1 day ago',
+    },
+    {
+        id: '2',
         clientCode: 'D-001',
         name: 'Burger Bar',
         dailySpend: 450,
@@ -21,7 +31,7 @@ export const mockClients: RestaurantClient[] = [
         lastUpdated: '2 hours ago',
     },
     {
-        id: '2',
+        id: '3',
         clientCode: 'D-002',
         name: 'Taco Town',
         dailySpend: 680,
@@ -31,7 +41,7 @@ export const mockClients: RestaurantClient[] = [
         lastUpdated: '30 minutes ago',
     },
     {
-        id: '3',
+        id: '4',
         clientCode: 'D-003',
         name: 'Sushi Supreme',
         dailySpend: 920,
@@ -41,7 +51,7 @@ export const mockClients: RestaurantClient[] = [
         lastUpdated: '1 hour ago',
     },
     {
-        id: '4',
+        id: '5',
         clientCode: 'D-004',
         name: 'Pizza Palace',
         dailySpend: 340,
@@ -49,15 +59,5 @@ export const mockClients: RestaurantClient[] = [
         strategySummary: 'Family-oriented campaigns with emphasis on value deals. Strong performance on weekends.',
         status: 'paused',
         lastUpdated: '5 hours ago',
-    },
-    {
-        id: '5',
-        clientCode: 'D-005',
-        name: 'Noodle House',
-        dailySpend: 520,
-        roas: 3.5,
-        strategySummary: 'Authentic Asian cuisine positioning. Video content showcasing cooking process drives highest engagement.',
-        status: 'active',
-        lastUpdated: '45 minutes ago',
     },
 ];
