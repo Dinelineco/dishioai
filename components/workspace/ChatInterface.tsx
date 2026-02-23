@@ -59,6 +59,11 @@ export function ChatInterface() {
                             <Bot className="w-7 h-7 text-dishio-yellow" />
                         </div>
                         <div>
+                            <img
+                                src="/images/DISHIO-LOGOTYPE-YELLOW.png"
+                                alt="Dishio"
+                                className="h-6 w-auto object-contain mx-auto mb-4 opacity-50"
+                            />
                             <p className="text-xl font-black text-white uppercase italic tracking-tight">
                                 {selectedClient ? `Briefing on ${selectedClient.name}` : 'Submit a request'}
                             </p>

@@ -43,11 +43,15 @@ export default function LandingPage() {
 
                     {/* Content */}
                     <div className="relative z-10 flex flex-col items-center gap-8 px-6 text-center">
-                        {/* Wordmark */}
-                        <div className="flex flex-col items-center gap-3">
-                            <h1 className="text-[80px] md:text-[110px] font-black tracking-tighter leading-none text-white uppercase italic">
-                                Dishio<span className="text-dishio-yellow">.</span>AI
-                            </h1>
+                        <div className="flex flex-col items-center gap-4">
+                            <motion.img
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ duration: 0.8, delay: 0.2 }}
+                                src="/images/DISHIO-LOGOTYPE-YELLOW.png"
+                                alt="Dishio"
+                                className="h-20 md:h-28 w-auto object-contain"
+                            />
                             <p className="max-w-md text-lg text-neutral-400 leading-relaxed font-medium">
                                 Your Restaurant’s AI Growth Engine.
                             </p>

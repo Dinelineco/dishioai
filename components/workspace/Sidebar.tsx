@@ -10,13 +10,12 @@ export function Sidebar() {
     return (
         <aside className="w-[250px] shrink-0 h-screen flex flex-col border-r border-neutral-800/60 bg-[#080808]">
             {/* Logo / brand */}
-            <div className="px-4 py-5 border-b border-neutral-800/60 flex items-center gap-2">
-                <div className="w-6 h-6 rounded bg-neutral-900 border border-neutral-700 flex items-center justify-center">
-                    <span className="text-[10px] font-black text-dishio-yellow italic">D</span>
-                </div>
-                <h1 className="text-base font-black tracking-tight text-white uppercase italic">
-                    Dishio<span className="text-dishio-yellow">.</span>AI
-                </h1>
+            <div className="px-4 py-6 border-b border-neutral-800/60">
+                <img
+                    src="/images/DISHIO-LOGOTYPE-YELLOW.png"
+                    alt="Dishio"
+                    className="h-5 w-auto object-contain"
+                />
             </div>
 
             {/* Client selector */}

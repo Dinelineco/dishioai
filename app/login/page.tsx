@@ -38,32 +38,13 @@ export default function LoginPage() {
             >
                 <div className="bg-[#0a0a0a] border border-neutral-800 rounded-2xl p-8 shadow-2xl">
                     {/* Header */}
-                    <div className="flex flex-col items-center gap-4 mb-8">
-                        <div className="w-16 h-16 flex items-center justify-center">
-                            <svg viewBox="0 0 100 100" className="w-full h-full fill-dishio-yellow">
-                                {/* Top Circle */}
-                                <circle cx="50" cy="15" r="8" />
-                                {/* Bottom Circle */}
-                                <circle cx="50" cy="85" r="8" />
-                                {/* Left Circle */}
-                                <circle cx="15" cy="50" r="8" />
-                                {/* Right Circle */}
-                                <circle cx="85" cy="50" r="8" />
-
-                                {/* Top-Right Pill */}
-                                <rect x="72" y="22" width="6" height="15" rx="3" transform="rotate(45 75 29)" />
-                                {/* Bottom-Right Pill */}
-                                <rect x="72" y="63" width="6" height="15" rx="3" transform="rotate(135 75 71)" />
-                                {/* Bottom-Left Pill */}
-                                <rect x="22" y="63" width="6" height="15" rx="3" transform="rotate(225 25 71)" />
-                                {/* Top-Left Pill */}
-                                <rect x="22" y="22" width="6" height="15" rx="3" transform="rotate(315 25 29)" />
-                            </svg>
-                        </div>
-                        <div className="text-center">
-                            <h1 className="text-2xl font-black tracking-tight text-white uppercase italic">Dishio<span className="text-dishio-yellow">.</span>AI</h1>
-                            <p className="text-[10px] font-bold text-neutral-500 mt-1 uppercase tracking-widest leading-none">Internal Growth Engine</p>
-                        </div>
+                    <div className="flex flex-col items-center gap-6 mb-8">
+                        <img
+                            src="/images/DISHIO-LOGOTYPE-YELLOW.png"
+                            alt="Dishio"
+                            className="h-12 w-auto object-contain"
+                        />
+                        <p className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest leading-none">Internal Growth Engine</p>
                     </div>
 
                     {/* Form */}
