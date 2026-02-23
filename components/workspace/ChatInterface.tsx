@@ -15,15 +15,15 @@ export function ChatInterface() {
     const [input, setInput] = useState('');
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-    const { messages, status, sendMessage } = useChat({
+    const { messages, status, sendMessage, data } = useChat({
         transport: new DefaultChatTransport({
             api: '/api/chat',
             body: {
-                client_uuid: selectedClient?.id ?? null,
+                client_code: selectedClient?.clientCode ?? null,
                 am_id: amId || 'am_default',
             },
         }),
-    });
+    }) as any;
 
     const isLoading = status === 'streaming' || status === 'submitted';
 
@@ -77,13 +77,18 @@ export function ChatInterface() {
                 ) : (
                     <div className="max-w-3xl mx-auto flex flex-col gap-6">
                         <AnimatePresence initial={false}>
-                            {messages.map((msg) => {
+                            {messages.map((msg: any, idx: number) => {
                                 const textContent = msg.parts
                                     ? msg.parts
-                                        .filter((p) => p.type === 'text')
-                                        .map((p) => (p as { type: 'text'; text: string }).text)
+                                        .filter((p: any) => p.type === 'text')
+                                        .map((p: any) => (p as { type: 'text'; text: string }).text)
                                         .join('')
                                     : '';
+
+                                // Check for sources in data stream (only for assistant messages)
+                                const lastAssistantIdx = messages.filter((m: any, i: number) => i <= idx && m.role === 'assistant').length - 1;
+                                const msgData = msg.role === 'assistant' ? (data as any)?.[lastAssistantIdx] : null;
+                                const sources = msgData?.sources || [];
 
                                 return (
                                     <motion.div
@@ -91,30 +96,45 @@ export function ChatInterface() {
                                         initial={{ opacity: 0, y: 10 }}
                                         animate={{ opacity: 1, y: 0 }}
                                         transition={{ duration: 0.2 }}
-                                        className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                                        className={`flex flex-col gap-2 ${msg.role === 'user' ? 'items-end' : 'items-start'}`}
                                     >
-                                        {msg.role === 'assistant' && (
-                                            <div className="shrink-0 w-7 h-7 rounded-lg bg-neutral-800 border border-neutral-700 flex items-center justify-center mt-1">
-                                                <Bot className="w-3.5 h-3.5 text-dishio-yellow" />
+                                        <div className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
+                                            <div className={`shrink-0 w-7 h-7 rounded-lg flex items-center justify-center mt-1 ${msg.role === 'assistant'
+                                                ? 'bg-neutral-800 border border-neutral-700'
+                                                : 'bg-white/10 border border-white/10'
+                                                }`}>
+                                                {msg.role === 'assistant' ? (
+                                                    <Bot className="w-3.5 h-3.5 text-dishio-yellow" />
+                                                ) : (
+                                                    <User className="w-3.5 h-3.5 text-white" />
+                                                )}
                                             </div>
-                                        )}
-                                        <div
-                                            className={`max-w-[75%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${msg.role === 'user'
-                                                ? 'bg-white text-black rounded-br-sm'
-                                                : 'bg-neutral-900 border border-neutral-800 text-neutral-200 rounded-bl-sm'
-                                                }`}
-                                        >
-                                            {msg.role === 'assistant' ? (
-                                                <div className="prose prose-invert prose-sm max-w-none">
-                                                    <ReactMarkdown>{textContent}</ReactMarkdown>
-                                                </div>
-                                            ) : (
-                                                textContent
-                                            )}
+                                            <div
+                                                className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${msg.role === 'user'
+                                                    ? 'bg-white text-black rounded-br-sm'
+                                                    : 'bg-neutral-900 border border-neutral-800 text-neutral-200 rounded-bl-sm'
+                                                    }`}
+                                            >
+                                                {msg.role === 'assistant' ? (
+                                                    <div className="prose prose-invert prose-sm max-w-none">
+                                                        <ReactMarkdown>{textContent}</ReactMarkdown>
+                                                    </div>
+                                                ) : (
+                                                    textContent
+                                                )}
+                                            </div>
                                         </div>
-                                        {msg.role === 'user' && (
-                                            <div className="shrink-0 w-7 h-7 rounded-lg bg-white/10 border border-white/10 flex items-center justify-center mt-1">
-                                                <User className="w-3.5 h-3.5 text-white" />
+
+                                        {/* Sources rendering */}
+                                        {msg.role === 'assistant' && sources.length > 0 && (
+                                            <div className="ml-10 flex flex-wrap gap-2 mt-1">
+                                                <p className="text-[10px] text-neutral-600 font-bold uppercase tracking-widest w-full mb-1">Context Sources:</p>
+                                                {sources.map((s: any, sIdx: number) => (
+                                                    <div key={sIdx} className="px-2 py-0.5 rounded bg-neutral-900 border border-neutral-800 text-[10px] text-neutral-500 flex items-center gap-1.5">
+                                                        <span className="w-1 h-1 rounded-full bg-dishio-yellow/40" />
+                                                        {s.code || s.client} ({s.date})
+                                                    </div>
+                                                ))}
                                             </div>
                                         )}
                                     </motion.div>
