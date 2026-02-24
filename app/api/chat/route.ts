@@ -4,7 +4,13 @@ const N8N_WEBHOOK_URL = process.env.N8N_WEBHOOK_URL ?? '';
 
 export async function POST(req: NextRequest) {
     const { messages, client_code, am_id } = await req.json();
-    const lastMessage = messages?.[messages.length - 1]?.content ?? '';
+
+    // AI SDK v6 sends messages with .parts instead of .content
+    const lastMsg = messages?.[messages.length - 1];
+    const lastMessage = lastMsg?.parts
+        ?.filter((p: any) => p.type === 'text')
+        .map((p: any) => p.text)
+        .join('') ?? lastMsg?.content ?? '';
 
     if (!N8N_WEBHOOK_URL) {
         return new Response('N8N_WEBHOOK_URL not configured', { status: 500 });
@@ -29,28 +35,48 @@ export async function POST(req: NextRequest) {
         const answer = data.answer || "I'm sorry, I couldn't generate a response.";
         const sources = data.sources || [];
 
-        // Stream the answer back to the frontend in Vercel AI SDK format
+        // AI SDK v6 expects Server-Sent Events with UIMessageChunk JSON objects
+        const textId = `text-${Date.now()}`;
         const encoder = new TextEncoder();
+
         const stream = new ReadableStream({
             start(controller) {
-                // Send the answer as a text chunk
-                // We split it to simulate streaming if it's long, or just send it at once
-                controller.enqueue(encoder.encode(`0:${JSON.stringify(answer)}\n`));
+                const send = (obj: any) => {
+                    controller.enqueue(encoder.encode(`data: ${JSON.stringify(obj)}\n\n`));
+                };
 
-                // Send metadata/sources via the data stream (8:)
-                if (sources.length > 0) {
-                    controller.enqueue(encoder.encode(`8:${JSON.stringify({ sources })}\n`));
+                // Text start
+                send({ type: 'text-start', id: textId });
+
+                // Send answer in chunks for streaming effect
+                const chunkSize = 50;
+                for (let i = 0; i < answer.length; i += chunkSize) {
+                    send({ type: 'text-delta', id: textId, delta: answer.slice(i, i + chunkSize) });
                 }
 
-                controller.enqueue(encoder.encode(`d:{"finishReason":"stop","usage":{"promptTokens":0,"completionTokens":0}}\n`));
+                // Text end
+                send({ type: 'text-end', id: textId });
+
+                // Send sources as data part
+                if (sources.length > 0) {
+                    const dataId = `data-${Date.now()}`;
+                    send({ type: 'data', id: dataId, data: [{ type: 'sources', value: sources }] });
+                }
+
+                // Finish
+                send({ type: 'finish' });
+
+                // Done marker
+                controller.enqueue(encoder.encode('data: [DONE]\n\n'));
                 controller.close();
             },
         });
 
         return new Response(stream, {
             headers: {
-                'Content-Type': 'text/plain; charset=utf-8',
-                'X-Vercel-AI-Data-Stream': 'v1',
+                'Content-Type': 'text/event-stream',
+                'Cache-Control': 'no-cache',
+                'Connection': 'keep-alive',
             },
         });
     } catch (error) {
