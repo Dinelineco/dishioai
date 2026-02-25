@@ -10,7 +10,7 @@ export async function GET(_req: NextRequest) {
 
   try {
     const response = await fetch(
-      `${SUPABASE_URL}/rest/v1/clients?select=client_code,name,am_id,status&order=name.asc`,
+      `${SUPABASE_URL}/rest/v1/clients?select=client_code,name,am_id,google_ads_id,meta_ads_id,toast_location_id&order=name.asc`,
       {
         headers: {
           apikey: SUPABASE_ANON_KEY,
@@ -36,13 +36,13 @@ export async function GET(_req: NextRequest) {
       dailySpend: 0,
       roas: 0,
       strategySummary: '',
-      status: (c.status as 'active' | 'paused' | 'pending') ?? 'active',
+      status: 'active' as 'active',
       lastUpdated: 'live',
     }));
 
     return NextResponse.json(mapped);
   } catch (error) {
     console.error('Error fetching clients:', error);
-    return NextResponse.json({ error: 'Failed to fetch clients' }, { status: 500 });
+    return NextResponse.json({ error: String(error) }, { status: 500 });
   }
 }
