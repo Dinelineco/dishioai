@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Check, ChevronsUpDown, Circle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -13,7 +13,7 @@ import {
     CommandList,
 } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { mockClients, RestaurantClient } from '@/lib/mockData';
+import { RestaurantClient } from '@/lib/mockData';
 import { useApp } from '@/context/AppContext';
 
 const statusColors: Record<RestaurantClient['status'], string> = {
@@ -24,7 +24,19 @@ const statusColors: Record<RestaurantClient['status'], string> = {
 
 export function ClientCombobox() {
     const [open, setOpen] = useState(false);
+    const [clients, setClients] = useState<RestaurantClient[]>([]);
+    const [loading, setLoading] = useState(true);
     const { selectedClient, setSelectedClient } = useApp();
+
+    useEffect(() => {
+        fetch('/api/clients')
+            .then((r) => r.json())
+            .then((data) => {
+                if (Array.isArray(data)) setClients(data);
+            })
+            .catch(console.error)
+            .finally(() => setLoading(false));
+    }, []);
 
     return (
         <Popover open={open} onOpenChange={setOpen}>
@@ -36,7 +48,7 @@ export function ClientCombobox() {
                     className="w-full justify-between bg-[#0f0f0f] border-neutral-800 text-neutral-300 hover:bg-[#1a1a1a] hover:text-white hover:border-neutral-700 transition-all"
                 >
                     <span className="truncate">
-                        {selectedClient ? selectedClient.name : 'Select client…'}
+                        {selectedClient ? selectedClient.name : loading ? 'Loading…' : 'Select client…'}
                     </span>
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
@@ -52,7 +64,7 @@ export function ClientCombobox() {
                             No clients found.
                         </CommandEmpty>
                         <CommandGroup>
-                            {mockClients.map((client) => (
+                            {clients.map((client) => (
                                 <CommandItem
                                     key={client.id}
                                     value={client.name}
@@ -70,9 +82,7 @@ export function ClientCombobox() {
                                             selectedClient?.id === client.id ? 'opacity-100' : 'opacity-0'
                                         )}
                                     />
-                                    <Circle
-                                        className={cn('h-2 w-2 fill-current', statusColors[client.status])}
-                                    />
+                                    <Circle className={cn('h-2 w-2 fill-current', statusColors[client.status])} />
                                     <span className="truncate">{client.name}</span>
                                 </CommandItem>
                             ))}
