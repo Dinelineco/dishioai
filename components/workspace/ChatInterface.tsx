@@ -15,23 +15,9 @@ export function ChatInterface() {
     const [input, setInput] = useState('');
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-    // Use refs so the transport always reads the latest values on each send
-    const selectedClientRef = useRef(selectedClient);
-    const amIdRef = useRef(amId);
-    useEffect(() => { selectedClientRef.current = selectedClient; }, [selectedClient]);
-    useEffect(() => { amIdRef.current = amId; }, [amId]);
-
     const { messages, status, sendMessage, data } = useChat({
         transport: new DefaultChatTransport({
             api: '/api/chat',
-            prepare: (id, messages) => ({
-                id,
-                messages,
-                body: {
-                    client_code: selectedClientRef.current?.clientCode ?? null,
-                    am_id: amIdRef.current || 'am_default',
-                },
-            }),
         }),
     }) as any;
 
@@ -44,7 +30,15 @@ export function ChatInterface() {
     const submit = () => {
         const text = input.trim();
         if (!text || isLoading) return;
-        sendMessage({ text: text });
+        sendMessage(
+            { text: text },
+            {
+                body: {
+                    client_code: selectedClient?.clientCode ?? null,
+                    am_id: amId || 'am_default',
+                },
+            }
+        );
         setInput('');
         if (textareaRef.current) {
             textareaRef.current.style.height = 'auto';
@@ -52,7 +46,15 @@ export function ChatInterface() {
     };
 
     const handlePresetSelect = (message: string) => {
-        sendMessage({ text: message });
+        sendMessage(
+            { text: message },
+            {
+                body: {
+                    client_code: selectedClient?.clientCode ?? null,
+                    am_id: amId || 'am_default',
+                },
+            }
+        );
         setInput('');
     };
 
