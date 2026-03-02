@@ -32,18 +32,18 @@ interface ActionPresetsProps {
 export function ActionPresets({ onSelect }: ActionPresetsProps) {
     return (
         <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
-            {{PRESETS.map((preset, i) => (
+            {PRESETS.map((preset, i) => (
                 <motion.button
-                    key={{preset.label}}
-                    initial={{{ opacity: 0, y: 8 }}}
-                    animate={{{ opacity: 1, y: 0 }}}
-                    transition={{{ delay: i * 0.05 }}}
-                    onClick={{() => onSelect(preset.message)}}
+                    key={preset.label}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.05 }}
+                    onClick={() => onSelect(preset.message)}
                     className="shrink-0 px-4 py-1.5 rounded-full border border-neutral-700 bg-neutral-900/60 text-neutral-300 text-xs font-medium tracking-wide hover:border-dishio-yellow/50 hover:bg-neutral-800 hover:text-white transition-all duration-150 cursor-pointer"
                 >
-                    {{preset.label}}
+                    {preset.label}
                 </motion.button>
-            ))}}
+            ))}
         </div>
     );
 }
