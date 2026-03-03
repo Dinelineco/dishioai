@@ -1,4 +1,5 @@
-import { NextRequest } from 'next/server';
+import { NextRequest } from 'next/server'; // Vercel Pro: allow up to 120s for complex multi-tool AI agent reports
+export const maxDuration = 120;
 
 const N8N_WEBHOOK_URL = process.env.N8N_WEBHOOK_URL ?? '';
 
@@ -17,8 +18,7 @@ export async function POST(req: NextRequest) {
     }
 
     try {
-                const controller = new AbortController();
-                const timeout = setTimeout(() => controller.abort(), 30000);
+                const timeout = setTimeout(() => controller.abort(), 120000); // 2 minutes for complex multi-tool reports
 
             const response = await fetch(N8N_WEBHOOK_URL, {
                             method: 'POST',
