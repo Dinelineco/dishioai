@@ -7,24 +7,23 @@ import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 
 export default function WorkspacePage() {
-    const { amId } = useApp();
-    const router = useRouter();
+  const { user, authLoading } = useApp();
+  const router = useRouter();
 
-    // Redirect to login if no AM session
-    useEffect(() => {
-        if (!amId) {
-            router.replace('/login');
-        }
-    }, [amId, router]);
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.replace('/login');
+    }
+  }, [user, authLoading, router]);
 
-    if (!amId) return null;
+  if (authLoading || !user) return null;
 
-    return (
-        <div className="flex h-screen bg-[#050505] overflow-hidden">
-            <Sidebar />
-            <main className="flex-1 h-full overflow-hidden">
-                <ChatInterface />
-            </main>
-        </div>
-    );
+  return (
+    <div className="flex h-screen bg-[#050505] overflow-hidden">
+      <Sidebar />
+      <main className="flex-1 h-full overflow-hidden">
+        <ChatInterface />
+      </main>
+    </div>
+  );
 }

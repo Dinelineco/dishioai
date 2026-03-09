@@ -1,95 +1,80 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Check, ChevronsUpDown, Circle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
-    Command,
-    CommandEmpty,
-    CommandGroup,
-    CommandInput,
-    CommandItem,
-    CommandList,
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
 } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { RestaurantClient } from '@/lib/mockData';
 import { useApp } from '@/context/AppContext';
 
-const statusColors: Record<RestaurantClient['status'], string> = {
-    active: 'text-emerald-400',
-    paused: 'text-yellow-400',
-    pending: 'text-neutral-500',
-};
-
 export function ClientCombobox() {
-    const [open, setOpen] = useState(false);
-    const [clients, setClients] = useState<RestaurantClient[]>([]);
-    const [loading, setLoading] = useState(true);
-    const { selectedClient, setSelectedClient } = useApp();
+  const [open, setOpen] = useState(false);
+  const { clients, selectedClient, setSelectedClient, clientsLoading } = useApp();
 
-    useEffect(() => {
-        fetch('/api/clients')
-            .then((r) => r.json())
-            .then((data) => {
-                if (Array.isArray(data)) setClients(data);
-            })
-            .catch(console.error)
-            .finally(() => setLoading(false));
-    }, []);
-
-    return (
-        <Popover open={open} onOpenChange={setOpen}>
-            <PopoverTrigger asChild>
-                <Button
-                    variant="outline"
-                    role="combobox"
-                    aria-expanded={open}
-                    className="w-full justify-between bg-[#0f0f0f] border-neutral-800 text-neutral-300 hover:bg-[#1a1a1a] hover:text-white hover:border-neutral-700 transition-all"
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          className="w-full justify-between bg-neutral-900 border-neutral-700 text-neutral-200 hover:bg-neutral-800 hover:text-white h-9 text-xs"
+        >
+          <span className="truncate">
+            {clientsLoading
+              ? 'Loading…'
+              : selectedClient
+                ? selectedClient.name
+                : 'Select client'}
+          </span>
+          <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[220px] p-0 bg-neutral-900 border-neutral-700" align="start">
+        <Command className="bg-transparent">
+          <CommandInput
+            placeholder="Search clients…"
+            className="text-xs text-neutral-200 placeholder:text-neutral-600 border-neutral-700"
+          />
+          <CommandList>
+            <CommandEmpty className="text-neutral-500 text-xs py-3 text-center">
+              No clients found.
+            </CommandEmpty>
+            <CommandGroup>
+              {clients.map((client) => (
+                <CommandItem
+                  key={client.id}
+                  value={client.name}
+                  onSelect={() => {
+                    setSelectedClient(client);
+                    setOpen(false);
+                  }}
+                  className="text-xs text-neutral-300 hover:bg-neutral-800 cursor-pointer"
                 >
-                    <span className="truncate">
-                        {selectedClient ? selectedClient.name : loading ? 'Loading…' : 'Select client…'}
-                    </span>
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-[220px] p-0 bg-[#0f0f0f] border-neutral-800">
-                <Command className="bg-transparent">
-                    <CommandInput
-                        placeholder="Search clients…"
-                        className="text-neutral-300 placeholder:text-neutral-600 border-b border-neutral-800"
-                    />
-                    <CommandList>
-                        <CommandEmpty className="py-4 text-center text-sm text-neutral-500">
-                            No clients found.
-                        </CommandEmpty>
-                        <CommandGroup>
-                            {clients.map((client) => (
-                                <CommandItem
-                                    key={client.id}
-                                    value={client.name}
-                                    onSelect={() => {
-                                        setSelectedClient(
-                                            selectedClient?.id === client.id ? null : client
-                                        );
-                                        setOpen(false);
-                                    }}
-                                    className="flex items-center gap-2 text-neutral-300 hover:bg-neutral-800 aria-selected:bg-neutral-800 cursor-pointer"
-                                >
-                                    <Check
-                                        className={cn(
-                                            'h-3.5 w-3.5',
-                                            selectedClient?.id === client.id ? 'opacity-100' : 'opacity-0'
-                                        )}
-                                    />
-                                    <Circle className={cn('h-2 w-2 fill-current', statusColors[client.status])} />
-                                    <span className="truncate">{client.name}</span>
-                                </CommandItem>
-                            ))}
-                        </CommandGroup>
-                    </CommandList>
-                </Command>
-            </PopoverContent>
-        </Popover>
-    );
+                  <Check
+                    className={cn(
+                      'mr-2 h-3 w-3',
+                      selectedClient?.id === client.id ? 'opacity-100 text-yellow-400' : 'opacity-0'
+                    )}
+                  />
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="truncate">{client.name}</span>
+                    <span className="text-neutral-600 shrink-0">{client.clientCode}</span>
+                  </div>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
 }
