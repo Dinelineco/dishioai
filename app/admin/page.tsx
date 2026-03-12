@@ -1,32 +1,19 @@
-cd ~/path-to-your/dishioai
-
-# Create the admin page
-mkdir -p app/admin
-curl -sL "https://raw.githubusercontent.com/Dinelineco/dishioai/main/app/api/admin/clients/route.ts" > /dev/null
-
-cat > app/admin/page.tsx << 'ENDOFFILE'
 'use client';
-
 import { useEffect, useState } from 'react';
 import { useApp } from '@/context/AppContext';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Building2, UserPlus, Check, Loader2, AlertCircle } from 'lucide-react';
-
 type Tab = 'restaurant' | 'user';
-
 export default function AdminPage() {
-  const { user, profile, isAdmin, authLoading, clients, refreshClients } = useApp();
+  const { user, isAdmin, authLoading, clients, refreshClients } = useApp();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<Tab>('restaurant');
-
   useEffect(() => {
     if (!authLoading && (!user || !isAdmin)) {
       router.replace('/workspace');
     }
   }, [user, isAdmin, authLoading, router]);
-
   if (authLoading || !user || !isAdmin) return null;
-
   return (
     <div className="min-h-screen bg-[#050505] text-white">
       <div className="border-b border-neutral-800/60">
@@ -49,7 +36,6 @@ export default function AdminPage() {
     </div>
   );
 }
-
 function TabButton({ active, onClick, icon, label }: { active: boolean; onClick: () => void; icon: React.ReactNode; label: string }) {
   return (
     <button onClick={onClick} className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${active ? 'border-amber-500 text-amber-400' : 'border-transparent text-neutral-500 hover:text-neutral-300'}`}>
@@ -57,14 +43,12 @@ function TabButton({ active, onClick, icon, label }: { active: boolean; onClick:
     </button>
   );
 }
-
 function AddRestaurantForm({ refreshClients }: { refreshClients: () => Promise<void> }) {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
   const [form, setForm] = useState({ name: '', client_code: '', am_id: '', google_ads_id: '', meta_ads_id: '', toast_location_id: '', logo_url: '', status: 'active' });
   const update = (field: string, value: string) => setForm(prev => ({ ...prev, [field]: value }));
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault(); setLoading(true); setError(''); setSuccess(false);
     try {
@@ -77,7 +61,6 @@ function AddRestaurantForm({ refreshClients }: { refreshClients: () => Promise<v
       setTimeout(() => setSuccess(false), 3000);
     } catch (err: any) { setError(err.message); } finally { setLoading(false); }
   };
-
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div><h2 className="text-base font-semibold text-neutral-200 mb-1">Add Restaurant Account</h2><p className="text-sm text-neutral-500">Create a new restaurant client. Fields match your existing data pipeline.</p></div>
@@ -106,7 +89,6 @@ function AddRestaurantForm({ refreshClients }: { refreshClients: () => Promise<v
     </form>
   );
 }
-
 function InviteUserForm({ clients }: { clients: any[] }) {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -114,7 +96,6 @@ function InviteUserForm({ clients }: { clients: any[] }) {
   const [form, setForm] = useState({ email: '', fullName: '', role: 'viewer', clientIds: [] as string[] });
   const update = (field: string, value: any) => setForm(prev => ({ ...prev, [field]: value }));
   const toggleClient = (id: string) => setForm(prev => ({ ...prev, clientIds: prev.clientIds.includes(id) ? prev.clientIds.filter(c => c !== id) : [...prev.clientIds, id] }));
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault(); setLoading(true); setError(''); setSuccess(false);
     try {
@@ -126,7 +107,6 @@ function InviteUserForm({ clients }: { clients: any[] }) {
       setTimeout(() => setSuccess(false), 3000);
     } catch (err: any) { setError(err.message); } finally { setLoading(false); }
   };
-
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div><h2 className="text-base font-semibold text-neutral-200 mb-1">Invite User</h2><p className="text-sm text-neutral-500">Send an invite email with role and client assignments.</p></div>
@@ -153,7 +133,7 @@ function InviteUserForm({ clients }: { clients: any[] }) {
               <label key={client.id} className="flex items-center gap-3 px-3 py-2.5 hover:bg-neutral-800/40 cursor-pointer transition-colors">
                 <input type="checkbox" checked={form.clientIds.includes(client.id)} onChange={() => toggleClient(client.id)} className="rounded border-neutral-700 bg-neutral-800 text-amber-500 focus:ring-amber-500/30" />
                 <span className="text-sm text-neutral-300">{client.name}</span>
-                {client.clientCode && <span className="text-xs text-neutral-600 ml-auto">{client.clientCode}</span>}
+                {client.client_code && <span className="text-xs text-neutral-600 ml-auto">{client.client_code}</span>}
               </label>
             ))}
           </div>
@@ -166,7 +146,6 @@ function InviteUserForm({ clients }: { clients: any[] }) {
     </form>
   );
 }
-
 function FormField({ label, value, onChange, placeholder, hint, type = 'text', required = false }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string; hint?: string; type?: string; required?: boolean }) {
   return (
     <div>
@@ -176,14 +155,8 @@ function FormField({ label, value, onChange, placeholder, hint, type = 'text', r
     </div>
   );
 }
-
 function StatusMessage({ success, error, successText }: { success: boolean; error: string; successText: string }) {
   if (success) return <div className="flex items-center gap-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-4 py-3 text-sm text-emerald-400"><Check className="w-4 h-4" />{successText}</div>;
   if (error) return <div className="flex items-center gap-2 rounded-lg bg-red-500/10 border border-red-500/20 px-4 py-3 text-sm text-red-400"><AlertCircle className="w-4 h-4" />{error}</div>;
   return null;
 }
-ENDOFFILE
-
-git add app/admin/page.tsx components/workspace/Sidebar.tsx
-git commit -m "feat: add admin page and update sidebar"
-git push origin main
