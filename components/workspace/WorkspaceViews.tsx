@@ -19,7 +19,7 @@ const variants = {
     exit:    { opacity: 0, y: -4 },
 };
 
-const transition = { duration: 0.18, ease: 'easeOut' };
+const transition = { duration: 0.18, ease: 'easeOut' as const };
 
 
 export function WorkspaceViews({ activeView }: WorkspaceViewsProps) {
