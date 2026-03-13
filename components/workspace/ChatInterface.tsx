@@ -34,7 +34,7 @@ export function ChatInterface() {
             { text: text },
             {
                 body: {
-                    client_code: selectedClient?.clientCode ?? null,
+                    client_code: selectedClient?.clientCode || null,
                     am_id: amId || 'am_default',
                 },
             }
@@ -50,7 +50,7 @@ export function ChatInterface() {
             { text: message },
             {
                 body: {
-                    client_code: selectedClient?.clientCode ?? null,
+                    client_code: selectedClient?.clientCode || null,
                     am_id: amId || 'am_default',
                 },
             }
