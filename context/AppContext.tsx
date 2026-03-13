@@ -90,16 +90,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [supabase]);
 
   useEffect(() => {
-    const loadUserData = async (u: User) => {
+    const loadUserData = async (u: User, accessToken: string) => {
       setUser(u);
       try {
-        // Use service-role-backed API route to bypass RLS on profiles table
-        const res = await fetch('/api/profile');
+        // Pass access token in Authorization header — no cookie/lock dependency
+        const res = await fetch('/api/profile', {
+          headers: { 'Authorization': `Bearer ${accessToken}` },
+        });
         if (res.ok) {
           const p: Profile = await res.json();
           setProfile(p);
         } else {
-          // Fallback: synthesise profile from auth user
           setProfile({
             id: u.id,
             email: u.email ?? '',
@@ -131,8 +132,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
             event === 'SIGNED_IN' ||
             event === 'TOKEN_REFRESHED'
           ) {
-            if (session?.user) {
-              await loadUserData(session.user);
+            if (session?.user && session.access_token) {
+              await loadUserData(session.user, session.access_token);
             }
           } else if (event === 'SIGNED_OUT') {
             setUser(null);
