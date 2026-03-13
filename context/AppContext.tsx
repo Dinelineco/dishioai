@@ -79,8 +79,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const [lastToken, setLastToken] = useState<string>('');
-  const refreshClients = useCallback(() => {
-    if (lastToken) fetchClients(lastToken);
+  const refreshClients = useCallback(async (): Promise<void> => {
+    if (lastToken) await fetchClients(lastToken);
   }, [fetchClients, lastToken]);
 
   const signOut = useCallback(async () => {
