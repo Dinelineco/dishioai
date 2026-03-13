@@ -1,48 +1,36 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
+import { createClient as createServerClient } from '@/lib/supabase/server';
+import { createClient as createAdminClient } from '@supabase/supabase-js';
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '';
+export async function GET() {
+  // Auth check via getSession() — no Web Lock conflict with proxy
+  const supabase = await createServerClient();
+  const { data: { session } } = await supabase.auth.getSession();
 
-export async function GET(_req: NextRequest) {
-  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-    return NextResponse.json({ error: 'Supabase not configured' }, { status: 500 });
+  if (!session) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  try {
-    const response = await fetch(
-      `${SUPABASE_URL}/rest/v1/clients?select=client_code,name,am_id,google_ads_id,meta_ads_id,toast_location_id&order=name.asc`,
-      {
-        headers: {
-          apikey: SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        cache: 'no-store',
-      }
-    );
+  // Use service role to bypass RLS on clients table
+  const admin = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
 
-    if (!response.ok) {
-      const err = await response.text();
-      return NextResponse.json({ error: err }, { status: response.status });
-    }
+  const { data, error } = await admin
+    .from('clients')
+    .select('id, uuid, name, client_code')
+    .order('name');
 
-    const clients = await response.json();
-
-    // Map Supabase columns to the RestaurantClient shape the frontend expects
-    const mapped = clients.map((c: any) => ({
-      id: c.client_code,
-      clientCode: c.client_code,
-      name: c.name,
-      dailySpend: 0,
-      roas: 0,
-      strategySummary: '',
-      status: 'active' as 'active',
-      lastUpdated: 'live',
-    }));
-
-    return NextResponse.json(mapped);
-  } catch (error) {
-    console.error('Error fetching clients:', error);
-    return NextResponse.json({ error: String(error) }, { status: 500 });
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
+
+  const clients = (data ?? []).map((c: any) => ({
+    id: c.uuid ?? String(c.id),
+    clientCode: c.client_code ?? '',
+    name: c.name,
+  }));
+
+  return NextResponse.json(clients);
 }

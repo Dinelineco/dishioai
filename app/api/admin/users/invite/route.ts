@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { createClient as createAdminClient } from '@supabase/supabase-js'
+import { createServiceClient } from '@/lib/supabase/service'
 
 // Admin-only route: invite a new user by email
 export async function POST(request: NextRequest) {
@@ -10,7 +10,9 @@ export async function POST(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { data: profile } = await supabase
+  // Use service client to bypass RLS on profiles table
+  const adminCheck = createServiceClient()
+  const { data: profile } = await adminCheck
     .from('profiles')
     .select('role')
     .eq('id', user.id)
@@ -21,19 +23,15 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json()
-  const { email, role = 'viewer', clientIds = [], fullName } = body
+  const { email, role = 'viewer', fullName } = body
 
   if (!email) return NextResponse.json({ error: 'Email is required' }, { status: 400 })
 
-  // Use service role client for admin operations
-  const adminSupabase = createAdminClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  )
+  const admin = createServiceClient()
 
   // Send invite email
   const redirectTo = `${process.env.NEXT_PUBLIC_APP_URL}/invite/accept`
-  const { data: invited, error: inviteError } = await adminSupabase.auth.admin.inviteUserByEmail(
+  const { data: invited, error: inviteError } = await admin.auth.admin.inviteUserByEmail(
     email,
     { redirectTo, data: { full_name: fullName ?? '' } }
   )
@@ -43,7 +41,7 @@ export async function POST(request: NextRequest) {
   }
 
   // Upsert profile with role
-  await adminSupabase.from('profiles').upsert({
+  const { error: profileError } = await admin.from('profiles').upsert({
     id: invited.user.id,
     email,
     full_name: fullName ?? '',
@@ -52,26 +50,10 @@ export async function POST(request: NextRequest) {
     invited_by: user.id,
   })
 
-  // Assign to specified clients
-  if (clientIds.length > 0) {
-    await adminSupabase.from('user_client_assignments').insert(
-      clientIds.map((clientId: string) => ({
-        user_id: invited.user.id,
-        client_id: clientId,
-        role: role === 'admin' ? 'manager' : role,
-        assigned_by: user.id,
-      }))
-    )
+  if (profileError) {
+    console.error('Profile upsert error:', profileError.message)
+    // Non-fatal — user was still invited
   }
-
-  // Audit log
-  await adminSupabase.from('audit_logs').insert({
-    actor_id: user.id,
-    action: 'user.invite',
-    target_type: 'user',
-    target_id: invited.user.id,
-    metadata: { email, role, clientIds },
-  })
 
   return NextResponse.json({ success: true, userId: invited.user.id })
 }

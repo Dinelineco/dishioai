@@ -1,19 +1,46 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowRight, Zap } from 'lucide-react';
+import { ArrowRight, Zap, Loader2 } from 'lucide-react';
+import { createClient } from '@/lib/supabase/client';
 
 export default function LandingPage() {
     const router = useRouter();
     const [launching, setLaunching] = useState(false);
+    const [checking, setChecking] = useState(true);
 
-    const handleLaunch = async () => {
+    // If already logged in, skip landing and go straight to workspace
+    useEffect(() => {
+        const supabase = createClient();
+        supabase.auth.getSession()
+            .then(({ data: { session } }) => {
+                if (session) {
+                    router.replace('/workspace');
+                } else {
+                    setChecking(false);
+                }
+            })
+            .catch(() => {
+                // If session check fails, just show the landing page
+                setChecking(false);
+            });
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+    const handleLaunch = () => {
         setLaunching(true);
-        await new Promise((r) => setTimeout(r, 600));
-        router.push('/workspace');
+        router.push('/login');
     };
+
+    // Show nothing while checking session
+    if (checking) {
+        return (
+            <div className="min-h-screen bg-[#050505] flex items-center justify-center">
+                <Loader2 className="w-6 h-6 text-neutral-600 animate-spin" />
+            </div>
+        );
+    }
 
     return (
         <AnimatePresence>
@@ -53,7 +80,7 @@ export default function LandingPage() {
                                 className="h-20 md:h-28 w-auto object-contain"
                             />
                             <p className="max-w-md text-lg text-neutral-400 leading-relaxed font-medium">
-                                Your Restaurant’s AI Growth Engine.
+                                Your Restaurant's AI Growth Engine.
                             </p>
                         </div>
 

@@ -42,27 +42,3 @@ export async function getCurrentUser() {
   return { user, profile }
 }
 
-export async function getUserClients(userId: string) {
-  const supabase = await createClient()
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', userId)
-    .single()
-
-  if (profile?.role === 'admin') {
-    const { data } = await supabase
-      .from('clients')
-      .select('*')
-      .eq('status', 'active')
-      .order('name')
-    return data ?? []
-  }
-
-  const { data } = await supabase
-    .from('user_client_assignments')
-    .select('clients(*)')
-    .eq('user_id', userId)
-  
-  return (data ?? []).map((row: any) => row.clients).filter(Boolean)
-}

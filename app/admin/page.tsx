@@ -133,7 +133,7 @@ function InviteUserForm({ clients }: { clients: any[] }) {
               <label key={client.id} className="flex items-center gap-3 px-3 py-2.5 hover:bg-neutral-800/40 cursor-pointer transition-colors">
                 <input type="checkbox" checked={form.clientIds.includes(client.id)} onChange={() => toggleClient(client.id)} className="rounded border-neutral-700 bg-neutral-800 text-amber-500 focus:ring-amber-500/30" />
                 <span className="text-sm text-neutral-300">{client.name}</span>
-                {client.client_code && <span className="text-xs text-neutral-600 ml-auto">{client.client_code}</span>}
+                {client.clientCode && <span className="text-xs text-neutral-600 ml-auto">{client.clientCode}</span>}
               </label>
             ))}
           </div>

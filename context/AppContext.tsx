@@ -1,7 +1,8 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useRef, useCallback, type ReactNode } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import type { User } from '@supabase/supabase-js';
 
 export interface Profile {
@@ -14,11 +15,8 @@ export interface Profile {
 
 export interface RestaurantClient {
   id: string;
-  clientCode: string;      // = client_name from DB (D-number), used in n8n calls
+  clientCode: string;
   name: string;
-  logo_url?: string | null;
-  status: 'active' | 'inactive' | 'paused' | 'pending';
-  strategySummary?: string;
 }
 
 interface AppContextType {
@@ -46,62 +44,112 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [selectedClient, setSelectedClient] = useState<RestaurantClient | null>(null);
   const [clients, setClients] = useState<RestaurantClient[]>([]);
   const [clientsLoading, setClientsLoading] = useState(false);
-  const supabase = createClient();
+
+  // Single stable Supabase client — created once, used everywhere
+  const supabaseRef = useRef<SupabaseClient | null>(null);
+  if (!supabaseRef.current) {
+    supabaseRef.current = createClient();
+  }
+  const supabase = supabaseRef.current;
 
   const isAdmin = profile?.role === 'admin';
   const isManager = profile?.role === 'admin' || profile?.role === 'manager';
   const amId = user?.id ?? '';
   const setAmId = (_id: string) => {};
 
-  const fetchClients = useCallback(async (userId: string, role: string) => {
+  const fetchClients = useCallback(async () => {
     setClientsLoading(true);
     try {
-      let rows: RestaurantClient[] = [];
-      if (role === 'admin') {
-        const { data } = await supabase.from('clients').select('id, name, client_name, logo_url, status').eq('status', 'active').order('name');
-        rows = (data ?? []).map((r: any) => ({ id: r.id, clientCode: r.client_name, name: r.name, logo_url: r.logo_url, status: r.status }));
-      } else {
-        const { data } = await supabase.from('user_client_assignments').select('clients(id, name, client_name, logo_url, status)').eq('user_id', userId);
-        rows = (data ?? []).map((r: any) => r.clients).filter(Boolean).map((c: any) => ({ id: c.id, clientCode: c.client_name, name: c.name, logo_url: c.logo_url, status: c.status }));
+      // Use the API route which uses the service role key to bypass RLS
+      const res = await fetch('/api/clients');
+      if (!res.ok) {
+        console.error('fetchClients error:', res.status, await res.text());
+        return;
       }
-      setClients(rows);
-      if (rows.length > 0) setSelectedClient(prev => prev ?? rows[0]);
+      const data: RestaurantClient[] = await res.json();
+      setClients(data);
+      if (data.length > 0) setSelectedClient(prev => prev ?? data[0]);
+    } catch (err) {
+      console.error('fetchClients error:', err);
     } finally {
       setClientsLoading(false);
     }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
-  const refreshClients = useCallback(async () => {
-    if (user && profile) await fetchClients(user.id, profile.role);
-  }, [user, profile, fetchClients]);
+  const refreshClients = useCallback(() => fetchClients(), [fetchClients]);
+
+  const signOut = useCallback(async () => {
+    await supabase.auth.signOut();
+  }, [supabase]);
 
   useEffect(() => {
-    supabase.auth.getUser().then(async ({ data: { user: u } }) => {
-      if (u) {
-        setUser(u);
-        const { data: p } = await supabase.from('profiles').select('*').eq('id', u.id).single();
-        if (p) { setProfile(p); await fetchClients(u.id, p.role); }
+    const loadUserData = async (u: User) => {
+      setUser(u);
+      try {
+        // Use service-role-backed API route to bypass RLS on profiles table
+        const res = await fetch('/api/profile');
+        if (res.ok) {
+          const p: Profile = await res.json();
+          setProfile(p);
+        } else {
+          // Fallback: synthesise profile from auth user
+          setProfile({
+            id: u.id,
+            email: u.email ?? '',
+            full_name: (u.user_metadata?.full_name as string) ?? null,
+            role: 'viewer',
+            is_active: true,
+          });
+        }
+      } catch (err) {
+        console.error('loadUserData error:', err);
+        setProfile({
+          id: u.id,
+          email: u.email ?? '',
+          full_name: null,
+          role: 'viewer',
+          is_active: true,
+        });
       }
-      setAuthLoading(false);
-    });
+      // Always fetch clients
+      await fetchClients();
+    };
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (session?.user) {
-        setUser(session.user);
-        const { data: p } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
-        if (p) { setProfile(p); await fetchClients(session.user.id, p.role); }
-      } else {
-        setUser(null); setProfile(null); setClients([]); setSelectedClient(null);
+    // onAuthStateChange fires INITIAL_SESSION immediately on subscribe
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        try {
+          if (
+            event === 'INITIAL_SESSION' ||
+            event === 'SIGNED_IN' ||
+            event === 'TOKEN_REFRESHED'
+          ) {
+            if (session?.user) {
+              await loadUserData(session.user);
+            }
+          } else if (event === 'SIGNED_OUT') {
+            setUser(null);
+            setProfile(null);
+            setClients([]);
+            setSelectedClient(null);
+          }
+        } catch (err) {
+          console.error('Auth state change error:', err);
+        } finally {
+          setAuthLoading(false);
+        }
       }
-      setAuthLoading(false);
-    });
+    );
+
     return () => subscription.unsubscribe();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const signOut = useCallback(async () => { await supabase.auth.signOut(); }, [supabase]);
+  }, [supabase, fetchClients]);
 
   return (
-    <AppContext.Provider value={{ user, profile, isAdmin, isManager, authLoading, signOut, selectedClient, setSelectedClient, clients, clientsLoading, refreshClients, amId, setAmId }}>
+    <AppContext.Provider value={{
+      user, profile, isAdmin, isManager, authLoading, signOut,
+      selectedClient, setSelectedClient, clients, clientsLoading,
+      refreshClients, amId, setAmId,
+    }}>
       {children}
     </AppContext.Provider>
   );

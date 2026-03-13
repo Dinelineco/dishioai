@@ -1,49 +1,41 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { updateSession } from '@/lib/supabase/middleware'
 
-const PUBLIC_PATHS = ['/login', '/auth/callback', '/invite/accept', '/account-locked']
+// Exact-match public routes
+const PUBLIC_EXACT = ['/', '/login', '/account-locked']
+
+// Prefix-match public routes (anything starting with these)
+const PUBLIC_PREFIX = ['/auth/callback', '/invite/accept', '/api']
+
+function isPublic(pathname: string) {
+  if (PUBLIC_EXACT.includes(pathname)) return true
+  return PUBLIC_PREFIX.some((p) => pathname.startsWith(p))
+}
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  if (PUBLIC_PATHS.some((p) => pathname.startsWith(p))) {
-    return NextResponse.next()
-  }
-
+  // Skip static assets
   if (pathname.startsWith('/_next') || pathname.startsWith('/favicon')) {
     return NextResponse.next()
   }
 
+  // Public paths pass through without auth
+  if (isPublic(pathname)) {
+    return NextResponse.next()
+  }
+
+  // Protected routes: refresh session, check auth
   try {
-    const { supabaseResponse, supabase, user } = await updateSession(request)
+    const { supabaseResponse, user } = await updateSession(request)
 
     if (!user) {
       return NextResponse.redirect(new URL('/login', request.url))
     }
 
-    // Gracefully handle missing profiles table (pre-migration)
-    try {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('role, is_active')
-        .eq('id', user.id)
-        .single()
-
-      if (profile && !profile.is_active) {
-        return NextResponse.redirect(new URL('/account-locked', request.url))
-      }
-
-      if (pathname.startsWith('/admin') && profile?.role !== 'admin') {
-        return NextResponse.redirect(new URL('/workspace', request.url))
-      }
-    } catch {
-      // profiles table not yet created — allow through (run migration.sql to enable)
-    }
-
     return supabaseResponse
   } catch {
-    // Auth error — allow through to avoid hard blocking
-    return NextResponse.next()
+    return NextResponse.redirect(new URL('/login', request.url))
   }
 }
 
