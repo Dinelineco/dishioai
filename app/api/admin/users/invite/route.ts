@@ -29,8 +29,9 @@ export async function POST(request: NextRequest) {
 
   const admin = createServiceClient()
 
-  // Send invite email
-  const redirectTo = `${process.env.NEXT_PUBLIC_APP_URL}/invite/accept`
+  // Send invite email — route through /auth/callback so Supabase can exchange
+  // the token for a session before landing on /invite/accept to set password
+  const redirectTo = `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback?next=/invite/accept`
   const { data: invited, error: inviteError } = await admin.auth.admin.inviteUserByEmail(
     email,
     { redirectTo, data: { full_name: fullName ?? '' } }
