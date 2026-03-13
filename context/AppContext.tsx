@@ -45,12 +45,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [clients, setClients] = useState<RestaurantClient[]>([]);
   const [clientsLoading, setClientsLoading] = useState(false);
 
-  // Single stable Supabase client — created once, used everywhere
+  // Supabase client ref — initialized lazily inside useEffect (client-side only)
   const supabaseRef = useRef<SupabaseClient | null>(null);
-  if (!supabaseRef.current) {
-    supabaseRef.current = createClient();
-  }
-  const supabase = supabaseRef.current;
 
   const isAdmin = profile?.role === 'admin';
   const isManager = profile?.role === 'admin' || profile?.role === 'manager';
@@ -60,7 +56,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const fetchClients = useCallback(async (accessToken: string) => {
     setClientsLoading(true);
     try {
-      // Use service-role API route with Bearer token — bypasses RLS am_id filtering
       const res = await fetch('/api/clients', {
         headers: { 'Authorization': `Bearer ${accessToken}` },
       });
@@ -83,16 +78,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (lastToken) await fetchClients(lastToken);
   }, [fetchClients, lastToken]);
 
+  // signOut reads supabaseRef.current at call time — always up-to-date
   const signOut = useCallback(async () => {
-    await supabase.auth.signOut();
-  }, [supabase]);
+    if (supabaseRef.current) await supabaseRef.current.auth.signOut();
+  }, []);
 
   useEffect(() => {
+    // Initialize Supabase browser client here — never runs server-side
+    if (!supabaseRef.current) {
+      supabaseRef.current = createClient();
+    }
+    const supabase = supabaseRef.current;
+
     const loadUserData = async (u: User, accessToken: string) => {
       setUser(u);
       setLastToken(accessToken);
       try {
-        // Pass access token in Authorization header — no cookie/lock dependency
         const res = await fetch('/api/profile', {
           headers: { 'Authorization': `Bearer ${accessToken}` },
         });
@@ -118,11 +119,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
           is_active: true,
         });
       }
-      // Always fetch clients
       await fetchClients(accessToken);
     };
 
-    // onAuthStateChange fires INITIAL_SESSION immediately on subscribe
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         try {
@@ -149,7 +148,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     );
 
     return () => subscription.unsubscribe();
-  }, [supabase, fetchClients]);
+  }, [fetchClients]);
 
   return (
     <AppContext.Provider value={{
