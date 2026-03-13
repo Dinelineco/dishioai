@@ -57,33 +57,31 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const amId = user?.id ?? '';
   const setAmId = (_id: string) => {};
 
-  const fetchClients = useCallback(async () => {
+  const fetchClients = useCallback(async (accessToken: string) => {
     setClientsLoading(true);
     try {
-      // Query directly from browser client — no server-side getSession() lock conflict
-      const { data, error } = await supabase
-        .from('clients')
-        .select('id, uuid, name, client_code')
-        .order('name');
-      if (error) {
-        console.error('fetchClients error:', error.message);
+      // Use service-role API route with Bearer token — bypasses RLS am_id filtering
+      const res = await fetch('/api/clients', {
+        headers: { 'Authorization': `Bearer ${accessToken}` },
+      });
+      if (!res.ok) {
+        console.error('fetchClients error:', res.status, await res.text());
         return;
       }
-      const mapped: RestaurantClient[] = (data ?? []).map((c: any) => ({
-        id: c.uuid ?? String(c.id),
-        clientCode: c.client_code ?? '',
-        name: c.name,
-      }));
-      setClients(mapped);
-      if (mapped.length > 0) setSelectedClient(prev => prev ?? mapped[0]);
+      const data: RestaurantClient[] = await res.json();
+      setClients(data);
+      if (data.length > 0) setSelectedClient(prev => prev ?? data[0]);
     } catch (err) {
       console.error('fetchClients error:', err);
     } finally {
       setClientsLoading(false);
     }
-  }, [supabase]);
+  }, []);
 
-  const refreshClients = useCallback(() => fetchClients(), [fetchClients]);
+  const [lastToken, setLastToken] = useState<string>('');
+  const refreshClients = useCallback(() => {
+    if (lastToken) fetchClients(lastToken);
+  }, [fetchClients, lastToken]);
 
   const signOut = useCallback(async () => {
     await supabase.auth.signOut();
@@ -92,6 +90,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const loadUserData = async (u: User, accessToken: string) => {
       setUser(u);
+      setLastToken(accessToken);
       try {
         // Pass access token in Authorization header — no cookie/lock dependency
         const res = await fetch('/api/profile', {
@@ -120,7 +119,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         });
       }
       // Always fetch clients
-      await fetchClients();
+      await fetchClients(accessToken);
     };
 
     // onAuthStateChange fires INITIAL_SESSION immediately on subscribe

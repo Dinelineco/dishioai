@@ -1,22 +1,25 @@
-import { NextResponse } from 'next/server';
-import { createClient as createServerClient } from '@/lib/supabase/server';
-import { createClient as createAdminClient } from '@supabase/supabase-js';
+import { NextRequest, NextResponse } from 'next/server';
+import { createServiceClient } from '@/lib/supabase/service';
 
-export async function GET() {
-  // Auth check via getSession() — no Web Lock conflict with proxy
-  const supabase = await createServerClient();
-  const { data: { session } } = await supabase.auth.getSession();
+export async function GET(request: NextRequest) {
+  // Read Bearer token from Authorization header — no cookie/lock dependency
+  const authHeader = request.headers.get('Authorization');
+  const accessToken = authHeader?.replace('Bearer ', '').trim();
 
-  if (!session) {
+  if (!accessToken) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  // Use service role to bypass RLS on clients table
-  const admin = createAdminClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
+  const admin = createServiceClient();
 
+  // Verify the token
+  const { data: { user }, error: authError } = await admin.auth.getUser(accessToken);
+
+  if (authError || !user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  // Fetch all clients via service role — bypasses RLS (am_id filtering)
   const { data, error } = await admin
     .from('clients')
     .select('id, uuid, name, client_code')
