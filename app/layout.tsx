@@ -2,8 +2,6 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { AppProvider } from '@/context/AppContext';
 
-export const dynamic = 'force-dynamic';
-
 export const metadata: Metadata = {
     title: 'Dishio AI — Your Restaurant’s AI Growth Engine',
     description: 'AI-powered growth engine for modern restaurant marketing.',
