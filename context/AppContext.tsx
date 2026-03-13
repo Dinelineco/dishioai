@@ -60,21 +60,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const fetchClients = useCallback(async () => {
     setClientsLoading(true);
     try {
-      // Use the API route which uses the service role key to bypass RLS
-      const res = await fetch('/api/clients');
-      if (!res.ok) {
-        console.error('fetchClients error:', res.status, await res.text());
+      // Query directly from browser client — no server-side getSession() lock conflict
+      const { data, error } = await supabase
+        .from('clients')
+        .select('id, uuid, name, client_code')
+        .order('name');
+      if (error) {
+        console.error('fetchClients error:', error.message);
         return;
       }
-      const data: RestaurantClient[] = await res.json();
-      setClients(data);
-      if (data.length > 0) setSelectedClient(prev => prev ?? data[0]);
+      const mapped: RestaurantClient[] = (data ?? []).map((c: any) => ({
+        id: c.uuid ?? String(c.id),
+        clientCode: c.client_code ?? '',
+        name: c.name,
+      }));
+      setClients(mapped);
+      if (mapped.length > 0) setSelectedClient(prev => prev ?? mapped[0]);
     } catch (err) {
       console.error('fetchClients error:', err);
     } finally {
       setClientsLoading(false);
     }
-  }, []);
+  }, [supabase]);
 
   const refreshClients = useCallback(() => fetchClients(), [fetchClients]);
 
