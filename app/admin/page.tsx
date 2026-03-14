@@ -53,15 +53,26 @@ function TabButton({ active, onClick, icon, label }: { active: boolean; onClick:
 function ManageUsersPanel({ currentUserId }: { currentUserId: string }) {
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [actionId, setActionId] = useState<string | null>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [toast, setToast] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
-    const res = await fetch('/api/admin/users');
-    const data = await res.json();
-    setUsers(Array.isArray(data) ? data : []);
+    setLoadError('');
+    try {
+      const res = await fetch('/api/admin/users');
+      const data = await res.json();
+      if (!res.ok) {
+        setLoadError(data.error || `API error ${res.status}`);
+        setUsers([]);
+      } else {
+        setUsers(Array.isArray(data) ? data : []);
+      }
+    } catch (e: any) {
+      setLoadError(e.message || 'Failed to load users');
+    }
     setLoading(false);
   }, []);
 
@@ -110,6 +121,18 @@ function ManageUsersPanel({ currentUserId }: { currentUserId: string }) {
   if (loading) return (
     <div className="flex items-center justify-center py-16">
       <Loader2 className="w-5 h-5 animate-spin text-neutral-600" />
+    </div>
+  );
+
+  if (loadError) return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2 rounded-xl bg-red-500/10 border border-red-500/20 px-4 py-3 text-sm text-red-400">
+        <AlertCircle className="w-4 h-4 shrink-0" />
+        <span>Failed to load users: <strong>{loadError}</strong></span>
+      </div>
+      <button onClick={load} className="text-sm text-neutral-400 hover:text-neutral-200 flex items-center gap-1.5 transition-colors">
+        <RefreshCw className="w-3.5 h-3.5" /> Retry
+      </button>
     </div>
   );
 

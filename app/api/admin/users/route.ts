@@ -54,7 +54,8 @@ export async function DELETE(request: NextRequest) {
   if (!userId) return NextResponse.json({ error: 'userId is required' }, { status: 400 })
 
   // Prevent self-deletion
-  if (userId === auth.user?.id) {
+  const callerUser = 'user' in auth ? auth.user : null
+  if (userId === callerUser?.id) {
     return NextResponse.json({ error: 'You cannot remove your own account.' }, { status: 400 })
   }
 
