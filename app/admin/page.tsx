@@ -99,6 +99,12 @@ function InviteUserForm({ clients }: { clients: any[] }) {
   const toggleClient = (id: string) => setForm(prev => ({ ...prev, clientIds: prev.clientIds.includes(id) ? prev.clientIds.filter(c => c !== id) : [...prev.clientIds, id] }));
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault(); setLoading(true); setError(''); setSuccess(false);
+    const emailDomain = form.email.split('@')[1]?.toLowerCase();
+    if (!emailDomain || !['dineline.co', 'dish.io'].includes(emailDomain)) {
+      setError('Only @dineline.co and @dish.io email addresses can be invited.');
+      setLoading(false);
+      return;
+    }
     try {
       const res = await fetch('/api/admin/users/invite', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) });
       const data = await res.json();
@@ -111,7 +117,7 @@ function InviteUserForm({ clients }: { clients: any[] }) {
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div><h2 className="text-base font-semibold text-neutral-200 mb-1">Invite User</h2><p className="text-sm text-neutral-500">Send an invite email with role and client assignments.</p></div>
-      <FormField label="Email Address *" value={form.email} onChange={v => update('email', v)} placeholder="user@restaurant.com" type="email" required />
+      <FormField label="Email Address *" value={form.email} onChange={v => update('email', v)} placeholder="name@dineline.co or name@dish.io" type="email" required hint="Only @dineline.co and @dish.io addresses are allowed." />
       <FormField label="Full Name" value={form.fullName} onChange={v => update('fullName', v)} placeholder="Jane Smith" />
       <div>
         <label className="block text-sm font-medium text-neutral-400 mb-1.5">Role *</label>

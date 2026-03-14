@@ -27,6 +27,15 @@ export async function POST(request: NextRequest) {
 
   if (!email) return NextResponse.json({ error: 'Email is required' }, { status: 400 })
 
+  const ALLOWED_DOMAINS = ['dineline.co', 'dish.io']
+  const emailDomain = email.split('@')[1]?.toLowerCase()
+  if (!emailDomain || !ALLOWED_DOMAINS.includes(emailDomain)) {
+    return NextResponse.json(
+      { error: 'Only @dineline.co and @dish.io email addresses can be invited.' },
+      { status: 400 }
+    )
+  }
+
   const admin = createServiceClient()
 
   // Send invite email — route through /auth/callback so Supabase can exchange
