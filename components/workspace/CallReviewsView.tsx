@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   PhoneCall, Clock, CheckCircle, XCircle, AlertCircle,
   ChevronRight, Send, User, Calendar, Zap, ExternalLink,
-  RefreshCw, Loader2, TriangleAlert
+  RefreshCw, Loader2, TriangleAlert, Monitor, TrendingUp
 } from 'lucide-react';
 
 interface CallDraft {
@@ -20,6 +20,9 @@ interface CallDraft {
   call_date: string;
   email_subject: string | null;
   email_body: string | null;
+  platform: string | null;
+  specific_request: string | null;
+  ai_strategy: string | null;
   next_steps: string[];
   blockers: string[];
   key_points: string[];
@@ -31,6 +34,12 @@ interface CallDraft {
   clickup_task_id: string | null;
   match_score?: number;
 }
+
+const PLATFORM_CONFIG: Record<string, { label: string; color: string; bg: string; border: string }> = {
+  google_ads: { label: 'Google Ads',    color: 'text-blue-400',          bg: 'bg-blue-400/10',          border: 'border-blue-400/20' },
+  meta_ads:   { label: 'Meta Ads',      color: 'text-purple-400',        bg: 'bg-purple-400/10',        border: 'border-purple-400/20' },
+  both:       { label: 'Google + Meta', color: 'text-dishio-yellow',     bg: 'bg-dishio-yellow/10',     border: 'border-dishio-yellow/20' },
+};
 
 const URGENCY_CONFIG: Record<string, { label: string; color: string; dot: string }> = {
   immediate: { label: 'Immediate', color: 'text-red-400', dot: 'bg-red-500' },
@@ -236,7 +245,17 @@ export function CallReviewsView() {
                     <PhoneCall className="w-3.5 h-3.5 text-dishio-yellow" />
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-neutral-200">{clientName(selected)}</p>
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <p className="text-sm font-semibold text-neutral-200">{clientName(selected)}</p>
+                      {selected.platform && (() => {
+                        const pc = PLATFORM_CONFIG[selected.platform] || PLATFORM_CONFIG.google_ads;
+                        return (
+                          <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-semibold border ${pc.color} ${pc.bg} ${pc.border}`}>
+                            <Monitor className="w-2.5 h-2.5" />{pc.label}
+                          </span>
+                        );
+                      })()}
+                    </div>
                     <div className="flex items-center gap-2 mt-0.5">
                       <span className="text-[11px] text-neutral-500">{selected.am_name}</span>
                       <span className="text-neutral-700">·</span>
@@ -334,6 +353,28 @@ export function CallReviewsView() {
                       transition={{ duration: 0.12 }}
                       className="p-6 space-y-5"
                     >
+                      {/* Work Request block */}
+                      {selected.specific_request && (
+                        <div className="rounded-xl border border-neutral-800 bg-neutral-900/40 p-4 space-y-3">
+                          <div className="flex items-center gap-1.5">
+                            <Monitor className="w-3.5 h-3.5 text-neutral-500" />
+                            <p className="text-[10px] font-semibold uppercase tracking-widest text-neutral-500">
+                              Work Request · {selected.platform ? (PLATFORM_CONFIG[selected.platform]?.label || selected.platform) : 'Ad Platform'}
+                            </p>
+                          </div>
+                          <p className="text-sm text-neutral-200 leading-relaxed">{selected.specific_request}</p>
+                          {selected.ai_strategy && (
+                            <div className="pt-2 border-t border-neutral-800">
+                              <div className="flex items-center gap-1.5 mb-2">
+                                <TrendingUp className="w-3 h-3 text-dishio-yellow opacity-60" />
+                                <p className="text-[10px] font-semibold uppercase tracking-widest text-dishio-yellow opacity-60">AI Strategy</p>
+                              </div>
+                              <p className="text-xs text-neutral-400 leading-relaxed">{selected.ai_strategy}</p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
                       {/* Subject */}
                       <div>
                         <p className="text-[10px] font-semibold uppercase tracking-widest text-neutral-600 mb-2">Email Subject</p>
