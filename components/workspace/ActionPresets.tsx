@@ -55,11 +55,7 @@ interface ActionPresetsProps {
 
 export function ActionPresets({ onSelect }: ActionPresetsProps) {
   return (
-    <div className="relative">
-      {/* Fade gradient indicating more content to the right */}
-      <div className="pointer-events-none absolute right-0 top-0 bottom-0.5 w-10 z-10"
-           style={{ background: 'linear-gradient(to right, transparent, var(--s0))' }} />
-      <div className="flex gap-1.5 overflow-x-auto pb-0.5 no-scrollbar">
+    <div className="flex flex-wrap gap-1.5">
         {PRESETS.map((preset, i) => (
           <motion.button
             key={preset.label}
@@ -90,7 +86,6 @@ export function ActionPresets({ onSelect }: ActionPresetsProps) {
             {preset.label}
           </motion.button>
         ))}
-      </div>
     </div>
   );
 }
