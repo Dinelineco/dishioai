@@ -40,7 +40,9 @@ export async function POST(request: NextRequest) {
 
   // Send invite email — route through /auth/callback so Supabase can exchange
   // the token for a session before landing on /invite/accept to set password
-  const redirectTo = `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback?next=/invite/accept`
+  // Invite emails use implicit flow (hash fragment tokens), not PKCE.
+  // Skip /auth/callback (server-side, can't read hashes) and go straight to the accept page.
+  const redirectTo = `${process.env.NEXT_PUBLIC_APP_URL}/invite/accept`
   const { data: invited, error: inviteError } = await admin.auth.admin.inviteUserByEmail(
     email,
     { redirectTo, data: { full_name: fullName ?? '' } }

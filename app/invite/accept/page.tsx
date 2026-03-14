@@ -19,6 +19,31 @@ export default function InviteAcceptPage() {
 
   useEffect(() => {
     const supabase = createClient()
+
+    // Invite emails use implicit flow — tokens arrive in the URL hash fragment.
+    // The server-side /auth/callback can't read hashes, so we handle them here.
+    const hash = window.location.hash
+    if (hash) {
+      const params = new URLSearchParams(hash.substring(1))
+      const accessToken = params.get('access_token')
+      const refreshToken = params.get('refresh_token')
+      if (accessToken && refreshToken) {
+        supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken })
+          .then(({ data, error }) => {
+            if (!error && data.session) {
+              setEmail(data.session.user.email ?? '')
+              setReady(true)
+              // Clean the hash from the URL without a reload
+              window.history.replaceState(null, '', window.location.pathname)
+            } else {
+              router.push('/login')
+            }
+          })
+        return
+      }
+    }
+
+    // Fallback: PKCE flow already set a session via /auth/callback
     supabase.auth.getSession().then(({ data }) => {
       if (data.session) {
         setEmail(data.session.user.email ?? '')
