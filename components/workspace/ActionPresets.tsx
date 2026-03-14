@@ -55,37 +55,42 @@ interface ActionPresetsProps {
 
 export function ActionPresets({ onSelect }: ActionPresetsProps) {
   return (
-    <div className="flex gap-1.5 overflow-x-auto pb-0.5 no-scrollbar">
-      {PRESETS.map((preset, i) => (
-        <motion.button
-          key={preset.label}
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: i * 0.03, duration: 0.2 }}
-          onClick={() => onSelect(preset.message)}
-          className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-medium tracking-wide transition-all duration-150 cursor-pointer whitespace-nowrap"
-          style={{
-            background: 'var(--s3)',
-            border: '1px solid var(--b2)',
-            color: 'var(--t2)',
-          }}
-          onMouseEnter={e => {
-            const el = e.currentTarget as HTMLElement;
-            el.style.background = 'var(--s4)';
-            el.style.borderColor = 'rgba(255,217,0,0.2)';
-            el.style.color = 'var(--t1)';
-          }}
-          onMouseLeave={e => {
-            const el = e.currentTarget as HTMLElement;
-            el.style.background = 'var(--s3)';
-            el.style.borderColor = 'var(--b2)';
-            el.style.color = 'var(--t2)';
-          }}
-        >
-          <span style={{ color: 'var(--yellow)', opacity: 0.65 }}>{preset.icon}</span>
-          {preset.label}
-        </motion.button>
-      ))}
+    <div className="relative">
+      {/* Fade gradient indicating more content to the right */}
+      <div className="pointer-events-none absolute right-0 top-0 bottom-0.5 w-10 z-10"
+           style={{ background: 'linear-gradient(to right, transparent, var(--s0))' }} />
+      <div className="flex gap-1.5 overflow-x-auto pb-0.5 no-scrollbar">
+        {PRESETS.map((preset, i) => (
+          <motion.button
+            key={preset.label}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.03, duration: 0.2 }}
+            onClick={() => onSelect(preset.message)}
+            className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-medium tracking-wide transition-all duration-150 cursor-pointer whitespace-nowrap"
+            style={{
+              background: 'var(--s3)',
+              border: '1px solid var(--b2)',
+              color: 'var(--t2)',
+            }}
+            onMouseEnter={e => {
+              const el = e.currentTarget as HTMLElement;
+              el.style.background = 'var(--s4)';
+              el.style.borderColor = 'rgba(255,217,0,0.2)';
+              el.style.color = 'var(--t1)';
+            }}
+            onMouseLeave={e => {
+              const el = e.currentTarget as HTMLElement;
+              el.style.background = 'var(--s3)';
+              el.style.borderColor = 'var(--b2)';
+              el.style.color = 'var(--t2)';
+            }}
+          >
+            <span style={{ color: 'var(--yellow)', opacity: 0.65 }}>{preset.icon}</span>
+            {preset.label}
+          </motion.button>
+        ))}
+      </div>
     </div>
   );
 }
