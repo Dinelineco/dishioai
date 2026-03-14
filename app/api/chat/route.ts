@@ -57,6 +57,15 @@ export async function POST(req: NextRequest) {
 
     const answer = data.answer || "I'm sorry, I couldn't generate a response.";
     const sources = data.sources || [];
+    const isWorkRequest = data.type === 'work_requests';
+    const workRequestDrafts = isWorkRequest ? (data.drafts || []) : null;
+
+    // Embed work request drafts as a special marker in the answer text
+    // so the frontend can parse them out and render WorkRequestCard components
+    const WR_MARKER = '\n\n__WR_DRAFTS__:';
+    const fullAnswer = workRequestDrafts !== null
+      ? `${answer}${WR_MARKER}${JSON.stringify(workRequestDrafts)}`
+      : answer;
 
     // AI SDK v6 expects Server-Sent Events with UIMessageChunk JSON objects
     const textId = `text-${Date.now()}`;
@@ -73,8 +82,8 @@ export async function POST(req: NextRequest) {
 
         // Send answer in chunks for streaming effect
         const chunkSize = 50;
-        for (let i = 0; i < answer.length; i += chunkSize) {
-          send({ type: 'text-delta', id: textId, delta: answer.slice(i, i + chunkSize) });
+        for (let i = 0; i < fullAnswer.length; i += chunkSize) {
+          send({ type: 'text-delta', id: textId, delta: fullAnswer.slice(i, i + chunkSize) });
         }
 
         // Text end

@@ -4,10 +4,24 @@ import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport } from 'ai';
 import { useApp } from '@/context/AppContext';
 import { ActionPresets } from './ActionPresets';
+import { WorkRequestCard } from './WorkRequestCard';
 import { useEffect, useRef, useState } from 'react';
 import { Send, Bot, User } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
+
+const WR_MARKER = '\n\n__WR_DRAFTS__:';
+
+function parseWorkRequests(text: string): { displayText: string; drafts: any[] | null } {
+  const idx = text.indexOf(WR_MARKER);
+  if (idx < 0) return { displayText: text, drafts: null };
+  try {
+    const drafts = JSON.parse(text.substring(idx + WR_MARKER.length));
+    return { displayText: text.substring(0, idx), drafts: Array.isArray(drafts) ? drafts : null };
+  } catch {
+    return { displayText: text, drafts: null };
+  }
+}
 
 export function ChatInterface() {
   const { selectedClient, amId } = useApp();
@@ -90,9 +104,10 @@ export function ChatInterface() {
           <div className="max-w-3xl mx-auto flex flex-col gap-5 px-6 py-6">
             <AnimatePresence initial={false}>
               {messages.map((msg: any, idx: number) => {
-                const textContent = msg.parts
+                const rawText = msg.parts
                   ? msg.parts.filter((p: any) => p.type === 'text').map((p: any) => p.text).join('')
                   : (msg.content ?? '');
+                const { displayText: textContent, drafts: workRequestDrafts } = parseWorkRequests(rawText);
                 const lastAssistantIdx = messages
                   .filter((m: any, i: number) => i <= idx && m.role === 'assistant').length - 1;
                 const msgData = msg.role === 'assistant' ? (data as any)?.[lastAssistantIdx] : null;
@@ -111,7 +126,7 @@ export function ChatInterface() {
                       <div className="flex items-end gap-2 max-w-[80%]">
                         <div className="px-4 py-3 rounded-2xl rounded-br-sm text-sm leading-relaxed font-medium"
                              style={{ background: 'var(--t1)', color: '#080808' }}>
-                          {textContent}
+                          {rawText}
                         </div>
                         <div className="shrink-0 w-7 h-7 rounded-[7px] flex items-center justify-center mb-0.5"
                              style={{ background: 'var(--s4)', border: '1px solid var(--b2)' }}>
@@ -125,18 +140,35 @@ export function ChatInterface() {
                           <Bot className="w-3.5 h-3.5" style={{ color: 'var(--yellow)' }} />
                         </div>
                         <div className="flex flex-col gap-2">
-                          <div className="px-4 py-3 rounded-2xl rounded-bl-sm text-sm leading-relaxed"
-                               style={{ background: 'var(--s2)', border: '1px solid var(--b2)', color: 'var(--t1)' }}>
-                            <div className="prose prose-invert prose-sm max-w-none
-                              prose-p:leading-relaxed prose-p:my-2
-                              prose-headings:font-semibold prose-headings:text-white
-                              prose-strong:text-white prose-strong:font-semibold
-                              prose-code:text-yellow-300 prose-code:bg-white/5 prose-code:px-1 prose-code:rounded
-                              prose-pre:bg-black/40 prose-pre:border prose-pre:border-white/5
-                              prose-li:my-0.5">
-                              <ReactMarkdown>{textContent}</ReactMarkdown>
+                          {textContent && (
+                            <div className="px-4 py-3 rounded-2xl rounded-bl-sm text-sm leading-relaxed"
+                                 style={{ background: 'var(--s2)', border: '1px solid var(--b2)', color: 'var(--t1)' }}>
+                              <div className="prose prose-invert prose-sm max-w-none
+                                prose-p:leading-relaxed prose-p:my-2
+                                prose-headings:font-semibold prose-headings:text-white
+                                prose-strong:text-white prose-strong:font-semibold
+                                prose-code:text-yellow-300 prose-code:bg-white/5 prose-code:px-1 prose-code:rounded
+                                prose-pre:bg-black/40 prose-pre:border prose-pre:border-white/5
+                                prose-li:my-0.5">
+                                <ReactMarkdown>{textContent}</ReactMarkdown>
+                              </div>
                             </div>
-                          </div>
+                          )}
+                          {workRequestDrafts && workRequestDrafts.length > 0 && (
+                            <div className="flex flex-col gap-3">
+                              {workRequestDrafts.map((draft: any) => (
+                                <WorkRequestCard
+                                  key={draft.id}
+                                  draft={draft}
+                                  onSubmitted={(id, url) => {
+                                    // Optimistically mark card as submitted in UI
+                                    draft.status = 'submitted';
+                                    if (url) draft.clickup_task_id = url.split('/').pop();
+                                  }}
+                                />
+                              ))}
+                            </div>
+                          )}
                           {sources.length > 0 && (
                             <div className="flex flex-wrap gap-1.5 pl-1">
                               <p className="text-[9px] font-bold uppercase tracking-widest w-full mb-0.5"
