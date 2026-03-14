@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/service'
 
-const CLICKUP_TOKEN = process.env.CLICKUP_API_TOKEN!
+const CLICKUP_TOKEN = process.env.CLICKUP_API_TOKEN
 const CLICKUP_LIST_ID = '901310096745' // WORK REQUESTS > Media Buying
 
 export async function POST(
@@ -11,6 +11,11 @@ export async function POST(
   const { id } = await params
   const body = await req.json()
   const supabase = createServiceClient()
+
+  if (!CLICKUP_TOKEN) {
+    console.error('CLICKUP_API_TOKEN is not set in environment')
+    return NextResponse.json({ error: 'ClickUp API token not configured on server. Please set CLICKUP_API_TOKEN environment variable.' }, { status: 500 })
+  }
 
   // Fetch the draft
   const { data: draft, error: fetchError } = await supabase
@@ -37,7 +42,7 @@ export async function POST(
     body: JSON.stringify({
       name: title,
       description: description,
-      status: 'to do',
+      status: 'new requests',
       priority: draft.urgency === 'immediate' ? 1 : draft.urgency === 'this_week' ? 2 : 3,
       notify_all: false,
     }),
