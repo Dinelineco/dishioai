@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json()
-  const { email, role = 'viewer', fullName } = body
+  const { email, role = 'viewer', fullName, resend = false, existingUserId } = body
 
   if (!email) return NextResponse.json({ error: 'Email is required' }, { status: 400 })
 
@@ -38,8 +38,12 @@ export async function POST(request: NextRequest) {
 
   const admin = createServiceClient()
 
-  // Send invite email — route through /auth/callback so Supabase can exchange
-  // the token for a session before landing on /invite/accept to set password
+  // For resend: delete the existing pending user so we can re-invite fresh
+  if (resend && existingUserId) {
+    await admin.auth.admin.deleteUser(existingUserId)
+    await admin.from('profiles').delete().eq('id', existingUserId)
+  }
+
   // Invite emails use implicit flow (hash fragment tokens), not PKCE.
   // Skip /auth/callback (server-side, can't read hashes) and go straight to the accept page.
   const redirectTo = `${process.env.NEXT_PUBLIC_APP_URL}/invite/accept`
