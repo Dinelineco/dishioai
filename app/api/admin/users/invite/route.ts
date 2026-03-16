@@ -44,9 +44,15 @@ export async function POST(request: NextRequest) {
     await admin.from('profiles').delete().eq('id', existingUserId)
   }
 
+  // Resolve the app origin — NEXT_PUBLIC_APP_URL must be set in Vercel env vars.
+  // VERCEL_URL is automatically injected by Vercel (no https:// prefix) as a fallback.
+  const appUrl =
+    process.env.NEXT_PUBLIC_APP_URL ||
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
+
   // Invite emails use implicit flow (hash fragment tokens), not PKCE.
   // Skip /auth/callback (server-side, can't read hashes) and go straight to the accept page.
-  const redirectTo = `${process.env.NEXT_PUBLIC_APP_URL}/invite/accept`
+  const redirectTo = `${appUrl}/invite/accept`
   const { data: invited, error: inviteError } = await admin.auth.admin.inviteUserByEmail(
     email,
     { redirectTo, data: { full_name: fullName ?? '' } }
