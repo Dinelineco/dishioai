@@ -4,7 +4,7 @@ import { ClientCombobox } from './ClientCombobox';
 import { useApp } from '@/context/AppContext';
 import {
   MessagesSquare, MessageSquare, PhoneCall, BarChart2,
-  Settings, LogOut, ChevronLeft, ChevronRight
+  Settings, Settings2, LogOut, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect } from 'react';
@@ -70,6 +70,7 @@ export function Sidebar({ activeView, onViewChange, callReviewCount = 0 }: Sideb
     { id: 'agency',      label: 'Agency',        icon: <MessagesSquare className="w-[15px] h-[15px]" /> },
     { id: 'reviews',     label: 'Call Reviews',  icon: <PhoneCall className="w-[15px] h-[15px]" />, badge: callReviewCount > 0 ? callReviewCount : undefined },
     { id: 'client-data', label: 'Client Data',   icon: <BarChart2 className="w-[15px] h-[15px]" /> },
+    { id: 'settings',    label: 'Settings',      icon: <Settings2 className="w-[15px] h-[15px]" /> },
     { id: 'admin',       label: 'Admin',         icon: <Settings className="w-[15px] h-[15px]" />, adminOnly: true },
   ];
 

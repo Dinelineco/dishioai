@@ -6,8 +6,10 @@ import { AdminView } from './AdminView';
 import { CallReviewsView } from './CallReviewsView';
 import { ClientDataView } from './ClientDataView';
 import { AgencyChatView } from './AgencyChatView';
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 
-export type WorkspaceView = 'chat' | 'reviews' | 'client-data' | 'admin' | 'agency';
+export type WorkspaceView = 'chat' | 'reviews' | 'client-data' | 'admin' | 'agency' | 'settings';
 
 interface WorkspaceViewsProps {
     activeView: WorkspaceView;
@@ -21,6 +23,11 @@ const variants = {
 
 const transition = { duration: 0.18, ease: 'easeOut' as const };
 
+function SettingsRedirect() {
+    const router = useRouter();
+    useEffect(() => { router.push('/settings') }, [router]);
+    return null;
+}
 
 export function WorkspaceViews({ activeView }: WorkspaceViewsProps) {
     return (
@@ -94,6 +101,20 @@ export function WorkspaceViews({ activeView }: WorkspaceViewsProps) {
                         transition={transition}
                     >
                         <AgencyChatView />
+                    </motion.div>
+                )}
+
+                {activeView === 'settings' && (
+                    <motion.div
+                        key="settings"
+                        className="absolute inset-0"
+                        variants={variants}
+                        initial="initial"
+                        animate="animate"
+                        exit="exit"
+                        transition={transition}
+                    >
+                        <SettingsRedirect />
                     </motion.div>
                 )}
 
