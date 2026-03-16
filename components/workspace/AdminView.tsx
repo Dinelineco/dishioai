@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useApp } from '@/context/AppContext';
 import {
     Building2, UserPlus, Check, Loader2, AlertCircle,
-    Users, List, RefreshCw, Shield, Eye, Briefcase, Pencil, X,
+    Users, List, RefreshCw, Shield, Eye, Briefcase, Pencil, X, Trash2,
 } from 'lucide-react';
 
 type Tab = 'restaurant' | 'user' | 'clients' | 'team';
@@ -27,6 +27,7 @@ interface TeamMember {
     full_name: string | null;
     role: string;
     is_active: boolean;
+    confirmed_at: string | null;
     created_at: string;
 }
 
@@ -504,8 +505,18 @@ const ROLE_CONFIG: Record<string, { label: string; color: string; bg: string; ic
 };
 
 function TeamList() {
+    const { user: currentUser } = useApp();
     const [members, setMembers] = useState<TeamMember[]>([]);
     const [loading, setLoading] = useState(true);
+    const [actionId, setActionId] = useState<string | null>(null);
+    const [confirmId, setConfirmId] = useState<string | null>(null);
+    const [editRoleId, setEditRoleId] = useState<string | null>(null);
+    const [toast, setToast] = useState('');
+    const [toastType, setToastType] = useState<'success' | 'error'>('success');
+
+    const showToast = (msg: string, type: 'success' | 'error' = 'success') => {
+        setToast(msg); setToastType(type); setTimeout(() => setToast(''), 4000);
+    };
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -519,6 +530,61 @@ function TeamList() {
 
     useEffect(() => { load(); }, [load]);
 
+    async function removeUser(userId: string) {
+        setActionId(userId);
+        const res = await fetch('/api/admin/users', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId }),
+        });
+        if (res.ok) {
+            setMembers(prev => prev.filter(m => m.id !== userId));
+            showToast('User removed.');
+        } else {
+            const d = await res.json();
+            showToast(d.error || 'Failed to remove user.', 'error');
+        }
+        setActionId(null);
+        setConfirmId(null);
+    }
+
+    async function changeRole(userId: string, role: string) {
+        setActionId(userId);
+        const res = await fetch('/api/admin/users', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId, role }),
+        });
+        if (res.ok) {
+            setMembers(prev => prev.map(m => m.id === userId ? { ...m, role } : m));
+            showToast(`Role updated to ${role}.`);
+        } else {
+            const d = await res.json();
+            showToast(d.error || 'Failed to update role.', 'error');
+        }
+        setActionId(null);
+        setEditRoleId(null);
+    }
+
+    async function resendInvite(m: TeamMember) {
+        setActionId(m.id);
+        const res = await fetch('/api/admin/users/invite', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: m.email, role: m.role, fullName: m.full_name, resend: true, existingUserId: m.id }),
+        });
+        if (res.ok) {
+            showToast('Invite resent to ' + m.email);
+            await load();
+        } else {
+            const d = await res.json();
+            showToast(d.error || 'Failed to resend invite.', 'error');
+        }
+        setActionId(null);
+    }
+
+    const pending = members.filter(m => !m.confirmed_at);
+
     const formatDate = (iso: string) =>
         new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
@@ -527,7 +593,9 @@ function TeamList() {
             <div className="flex items-center justify-between">
                 <div>
                     <h2 className="text-sm font-semibold text-neutral-200">Team Members</h2>
-                    <p className="text-[11px] text-neutral-500 mt-0.5">{members.length} user{members.length !== 1 ? 's' : ''} with access</p>
+                    <p className="text-[11px] text-neutral-500 mt-0.5">
+                        {members.length} user{members.length !== 1 ? 's' : ''} · {pending.length} pending
+                    </p>
                 </div>
                 <button
                     onClick={load}
@@ -539,22 +607,34 @@ function TeamList() {
                 </button>
             </div>
 
+            {toast && (
+                <div className={`flex items-center gap-2 rounded-lg border px-4 py-2.5 text-xs ${toastType === 'error' ? 'bg-red-500/10 border-red-500/20 text-red-400' : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'}`}>
+                    {toastType === 'error' ? <AlertCircle className="w-3.5 h-3.5 shrink-0" /> : <Check className="w-3.5 h-3.5 shrink-0" />}
+                    {toast}
+                </div>
+            )}
+
             {loading ? (
                 <div className="flex items-center justify-center py-12">
                     <Loader2 className="w-5 h-5 animate-spin text-neutral-600" />
                 </div>
+            ) : members.length === 0 ? (
+                <div className="flex flex-col items-center justify-center gap-2 py-12 opacity-40">
+                    <Users className="w-6 h-6 text-neutral-600" />
+                    <p className="text-xs text-neutral-600">No team members found.</p>
+                </div>
             ) : (
-                <div className="space-y-2">
-                    {members.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center gap-2 py-12 opacity-40">
-                            <Users className="w-6 h-6 text-neutral-600" />
-                            <p className="text-xs text-neutral-600">No team members found.</p>
-                        </div>
-                    ) : members.map(m => {
+                <div className="space-y-1.5">
+                    {members.map(m => {
                         const cfg = ROLE_CONFIG[m.role] ?? ROLE_CONFIG.viewer;
                         const initials = m.full_name
                             ? m.full_name.trim().split(' ').map(p => p[0]).slice(0, 2).join('').toUpperCase()
                             : m.email.slice(0, 2).toUpperCase();
+                        const isCurrent = m.id === currentUser?.id;
+                        const isPending = !m.confirmed_at;
+                        const isActing = actionId === m.id;
+                        const isConfirming = confirmId === m.id;
+                        const isEditingRole = editRoleId === m.id;
 
                         return (
                             <div key={m.id} className="flex items-center gap-3 px-4 py-3 rounded-lg border border-neutral-800 bg-neutral-900/30 hover:bg-neutral-900/60 transition-colors">
@@ -565,23 +645,101 @@ function TeamList() {
 
                                 {/* Info */}
                                 <div className="flex-1 min-w-0">
-                                    <p className="text-xs font-medium text-neutral-200 truncate">
-                                        {m.full_name || <span className="text-neutral-500 italic">No name set</span>}
-                                    </p>
+                                    <div className="flex items-center gap-1.5">
+                                        <p className="text-xs font-medium text-neutral-200 truncate">
+                                            {m.full_name || <span className="text-neutral-500 italic">No name set</span>}
+                                        </p>
+                                        {isCurrent && <span className="text-[9px] bg-dishio-yellow/10 text-dishio-yellow border border-dishio-yellow/20 rounded-full px-1.5 py-0.5 font-semibold shrink-0">You</span>}
+                                        {isPending && <span className="text-[9px] bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 rounded-full px-1.5 py-0.5 font-semibold shrink-0">Pending</span>}
+                                    </div>
                                     <p className="text-[11px] text-neutral-500 truncate">{m.email}</p>
                                 </div>
 
-                                {/* Role badge */}
-                                <span className={`shrink-0 flex items-center gap-1 px-2 py-1 rounded-md border text-[10px] font-semibold ${cfg.color} ${cfg.bg}`}>
-                                    {cfg.icon}
-                                    {cfg.label}
-                                </span>
+                                {/* Role — inline editor or badge */}
+                                {isEditingRole ? (
+                                    <div className="flex items-center gap-1 shrink-0">
+                                        {(['admin', 'manager', 'viewer'] as const).map(r => (
+                                            <button
+                                                key={r}
+                                                onClick={() => changeRole(m.id, r)}
+                                                disabled={isActing}
+                                                className={`text-[9px] font-semibold rounded-full px-2 py-0.5 border capitalize transition-colors disabled:opacity-40 ${
+                                                    m.role === r
+                                                        ? `${ROLE_CONFIG[r].color} ${ROLE_CONFIG[r].bg}`
+                                                        : 'bg-neutral-800 text-neutral-500 border-neutral-700 hover:border-neutral-500'
+                                                }`}
+                                            >
+                                                {isActing ? <Loader2 className="w-2.5 h-2.5 animate-spin inline" /> : r}
+                                            </button>
+                                        ))}
+                                        <button onClick={() => setEditRoleId(null)} className="p-0.5 text-neutral-600 hover:text-neutral-400">
+                                            <X className="w-3 h-3" />
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <button
+                                        onClick={() => !isCurrent && setEditRoleId(m.id)}
+                                        disabled={isCurrent}
+                                        title={isCurrent ? undefined : 'Edit role'}
+                                        className={`shrink-0 flex items-center gap-1 px-2 py-1 rounded-md border text-[10px] font-semibold transition-colors ${cfg.color} ${cfg.bg} ${!isCurrent ? 'hover:opacity-70 cursor-pointer' : 'cursor-default'}`}
+                                    >
+                                        {cfg.icon}{cfg.label}
+                                    </button>
+                                )}
 
-                                {/* Status dot */}
-                                <span className={`shrink-0 w-2 h-2 rounded-full ${m.is_active ? 'bg-emerald-500' : 'bg-neutral-700'}`} title={m.is_active ? 'Active' : 'Inactive'} />
+                                {/* Joined date */}
+                                <span className="shrink-0 text-[10px] text-neutral-700 hidden lg:block">{formatDate(m.created_at)}</span>
 
-                                {/* Joined */}
-                                <span className="shrink-0 text-[10px] text-neutral-700 hidden sm:block">{formatDate(m.created_at)}</span>
+                                {/* Actions */}
+                                {!isCurrent && !isEditingRole && (
+                                    <div className="flex items-center gap-1 shrink-0">
+                                        {isPending && (
+                                            <button
+                                                onClick={() => resendInvite(m)}
+                                                disabled={isActing}
+                                                title="Resend invite"
+                                                className="p-1.5 rounded-lg text-neutral-500 hover:text-dishio-yellow hover:bg-dishio-yellow/10 transition-colors disabled:opacity-40"
+                                            >
+                                                {isActing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+                                            </button>
+                                        )}
+                                        {!isPending && (
+                                            <button
+                                                onClick={() => setEditRoleId(m.id)}
+                                                title="Edit role"
+                                                className="p-1.5 rounded-lg text-neutral-600 hover:text-blue-400 hover:bg-blue-500/10 transition-colors"
+                                            >
+                                                <Pencil className="w-3.5 h-3.5" />
+                                            </button>
+                                        )}
+                                        {isConfirming ? (
+                                            <div className="flex items-center gap-1">
+                                                <span className="text-[10px] text-neutral-500">Remove?</span>
+                                                <button
+                                                    onClick={() => removeUser(m.id)}
+                                                    disabled={isActing}
+                                                    className="text-[10px] text-red-400 hover:text-red-300 px-1.5 py-1 rounded transition-colors disabled:opacity-40"
+                                                >
+                                                    {isActing ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Yes'}
+                                                </button>
+                                                <button
+                                                    onClick={() => setConfirmId(null)}
+                                                    className="text-[10px] text-neutral-500 hover:text-neutral-300 px-1.5 py-1 rounded"
+                                                >
+                                                    Cancel
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <button
+                                                onClick={() => setConfirmId(m.id)}
+                                                title="Remove user"
+                                                className="p-1.5 rounded-lg text-neutral-600 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                                            >
+                                                <Trash2 className="w-3.5 h-3.5" />
+                                            </button>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         );
                     })}
