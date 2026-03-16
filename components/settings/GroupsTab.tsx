@@ -130,7 +130,7 @@ export function GroupsTab() {
 
         <div>
           <p className="text-xs font-medium mb-2" style={{ color: 'var(--t3)' }}>Select clients ({newClientIds.length} selected)</p>
-          <div className="max-h-52 overflow-y-auto rounded-xl divide-y" style={{ border: '1px solid var(--b2)', background: 'var(--s3)', divideColor: 'var(--b1)' }}>
+          <div className="max-h-52 overflow-y-auto rounded-xl divide-y" style={{ border: '1px solid var(--b2)', background: 'var(--s3)' }}>
             {clients.map(client => (
               <label key={client.id} className="flex items-center gap-3 px-3 py-2.5 cursor-pointer transition-colors hover:bg-[var(--s4)]">
                 <div
