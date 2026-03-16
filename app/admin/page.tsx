@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic';
 import { useEffect, useState, useCallback } from 'react';
 import { useApp } from '@/context/AppContext';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Building2, UserPlus, Check, Loader2, AlertCircle, Users, Trash2, RefreshCw, Clock, ShieldCheck, Mail, UploadCloud } from 'lucide-react';
+import { ArrowLeft, Building2, UserPlus, Check, Loader2, AlertCircle, Users, Trash2, RefreshCw, Clock, ShieldCheck, Mail, UploadCloud, Pencil, X } from 'lucide-react';
 
 type Tab = 'restaurant' | 'user' | 'manage' | 'import';
 
@@ -26,7 +26,7 @@ export default function AdminPage() {
         </div>
       </div>
       <div className="border-b border-neutral-800/40">
-        <div className="max-w-3xl mx-auto px-6 flex gap-1">
+        <div className="max-w-3xl mx-auto px-6 flex gap-1 overflow-x-auto scrollbar-none">
           <TabButton active={activeTab === 'restaurant'} onClick={() => setActiveTab('restaurant')} icon={<Building2 className="w-4 h-4" />} label="Add Restaurant" />
           <TabButton active={activeTab === 'user'} onClick={() => setActiveTab('user')} icon={<UserPlus className="w-4 h-4" />} label="Invite User" />
           <TabButton active={activeTab === 'manage'} onClick={() => setActiveTab('manage')} icon={<Users className="w-4 h-4" />} label="Manage Users" />
@@ -58,6 +58,7 @@ function ManageUsersPanel({ currentUserId }: { currentUserId: string }) {
   const [loadError, setLoadError] = useState('');
   const [actionId, setActionId] = useState<string | null>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [editRoleId, setEditRoleId] = useState<string | null>(null);
   const [toast, setToast] = useState('');
 
   const load = useCallback(async () => {
@@ -98,6 +99,24 @@ function ManageUsersPanel({ currentUserId }: { currentUserId: string }) {
     }
     setActionId(null);
     setConfirmId(null);
+  }
+
+  async function changeRole(userId: string, role: string) {
+    setActionId(userId);
+    const res = await fetch('/api/admin/users', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, role }),
+    });
+    if (res.ok) {
+      setUsers(prev => prev.map(u => u.id === userId ? { ...u, role } : u));
+      showToast(`Role updated to ${role}.`);
+    } else {
+      const d = await res.json();
+      showToast(d.error || 'Failed to update role.');
+    }
+    setActionId(null);
+    setEditRoleId(null);
   }
 
   async function resendInvite(u: any) {
@@ -171,9 +190,12 @@ function ManageUsersPanel({ currentUserId }: { currentUserId: string }) {
                 isPending
                 isActing={actionId === u.id}
                 confirmId={confirmId}
+                editRoleId={editRoleId}
                 onConfirm={setConfirmId}
                 onRemove={removeUser}
                 onResend={resendInvite}
+                onEditRole={setEditRoleId}
+                onChangeRole={changeRole}
               />
             ))}
           </div>
@@ -197,9 +219,12 @@ function ManageUsersPanel({ currentUserId }: { currentUserId: string }) {
                 isPending={false}
                 isActing={actionId === u.id}
                 confirmId={confirmId}
+                editRoleId={editRoleId}
                 onConfirm={setConfirmId}
                 onRemove={removeUser}
                 onResend={resendInvite}
+                onEditRole={setEditRoleId}
+                onChangeRole={changeRole}
               />
             ))}
           </div>
@@ -209,61 +234,99 @@ function ManageUsersPanel({ currentUserId }: { currentUserId: string }) {
   );
 }
 
-function UserRow({ user, isCurrent, isPending, isActing, confirmId, onConfirm, onRemove, onResend }: {
+const ROLE_STYLES: Record<string, string> = {
+  admin: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
+  manager: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+  viewer: 'bg-neutral-800 text-neutral-400 border-neutral-700',
+};
+
+function UserRow({ user, isCurrent, isPending, isActing, confirmId, editRoleId, onConfirm, onRemove, onResend, onEditRole, onChangeRole }: {
   user: any; isCurrent: boolean; isPending: boolean; isActing: boolean;
-  confirmId: string | null; onConfirm: (id: string | null) => void;
+  confirmId: string | null; editRoleId: string | null;
+  onConfirm: (id: string | null) => void;
   onRemove: (id: string) => void; onResend: (u: any) => void;
+  onEditRole: (id: string | null) => void;
+  onChangeRole: (id: string, role: string) => void;
 }) {
   const isConfirming = confirmId === user.id;
+  const isEditingRole = editRoleId === user.id;
+
   return (
     <div className="flex items-center gap-3 px-4 py-3 bg-neutral-900 hover:bg-neutral-800/40 transition-colors">
+      {/* Avatar */}
       <div className="w-8 h-8 rounded-full bg-neutral-800 border border-neutral-700 flex items-center justify-center shrink-0 text-xs font-semibold text-neutral-400">
         {(user.full_name || user.email || '?')[0].toUpperCase()}
       </div>
+
+      {/* Name + email */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           <p className="text-sm text-neutral-200 truncate">{user.full_name || <span className="text-neutral-500 italic">No name</span>}</p>
           {isCurrent && <span className="text-[10px] bg-amber-500/15 text-amber-400 border border-amber-500/20 rounded-full px-2 py-0.5 font-medium">You</span>}
+          {isPending && <span className="text-[10px] bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 rounded-full px-2 py-0.5 font-medium">Pending</span>}
         </div>
         <p className="text-xs text-neutral-500 truncate flex items-center gap-1">
           <Mail className="w-3 h-3 shrink-0" />{user.email}
         </p>
       </div>
-      <span className={`text-[10px] font-medium rounded-full px-2 py-0.5 border capitalize shrink-0 ${
-        user.role === 'admin' ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' :
-        user.role === 'manager' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
-        'bg-neutral-800 text-neutral-400 border-neutral-700'
-      }`}>{user.role}</span>
+
+      {/* Role — click to edit (non-self only) */}
+      {isEditingRole ? (
+        <div className="flex items-center gap-1 shrink-0">
+          {(['admin', 'manager', 'viewer'] as const).map(r => (
+            <button
+              key={r}
+              onClick={() => onChangeRole(user.id, r)}
+              disabled={isActing}
+              className={`text-[10px] font-medium rounded-full px-2 py-0.5 border capitalize transition-colors disabled:opacity-40 ${
+                user.role === r ? ROLE_STYLES[r] + ' ring-1 ring-offset-0 ring-current' : 'bg-neutral-800 text-neutral-500 border-neutral-700 hover:border-neutral-500'
+              }`}
+            >
+              {isActing && user.role !== r ? <Loader2 className="w-3 h-3 animate-spin inline" /> : r}
+            </button>
+          ))}
+          <button onClick={() => onEditRole(null)} className="p-1 text-neutral-600 hover:text-neutral-400">
+            <X className="w-3 h-3" />
+          </button>
+        </div>
+      ) : (
+        <button
+          onClick={() => !isCurrent && onEditRole(user.id)}
+          disabled={isCurrent}
+          title={isCurrent ? undefined : 'Edit role'}
+          className={`text-[10px] font-medium rounded-full px-2 py-0.5 border capitalize shrink-0 transition-colors ${ROLE_STYLES[user.role] || ROLE_STYLES.viewer} ${!isCurrent ? 'hover:opacity-70 cursor-pointer' : 'cursor-default'}`}
+        >
+          {user.role}
+        </button>
+      )}
 
       {/* Actions */}
-      {!isCurrent && (
-        <div className="flex items-center gap-1.5 shrink-0">
+      {!isCurrent && !isEditingRole && (
+        <div className="flex items-center gap-1 shrink-0">
           {isPending && (
-            <button
-              onClick={() => onResend(user)}
-              disabled={isActing}
-              title="Resend invite"
-              className="p-1.5 rounded-lg text-neutral-500 hover:text-amber-400 hover:bg-amber-500/10 transition-colors disabled:opacity-40"
-            >
+            <button onClick={() => onResend(user)} disabled={isActing} title="Resend invite"
+              className="p-1.5 rounded-lg text-neutral-500 hover:text-amber-400 hover:bg-amber-500/10 transition-colors disabled:opacity-40">
               {isActing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+            </button>
+          )}
+          {!isPending && (
+            <button onClick={() => onEditRole(user.id)} title="Edit role"
+              className="p-1.5 rounded-lg text-neutral-600 hover:text-blue-400 hover:bg-blue-500/10 transition-colors">
+              <Pencil className="w-3.5 h-3.5" />
             </button>
           )}
           {isConfirming ? (
             <div className="flex items-center gap-1">
               <span className="text-xs text-neutral-500">Remove?</span>
-              <button onClick={() => onRemove(user.id)} disabled={isActing} className="text-xs text-red-400 hover:text-red-300 px-2 py-1 rounded transition-colors disabled:opacity-40">
+              <button onClick={() => onRemove(user.id)} disabled={isActing}
+                className="text-xs text-red-400 hover:text-red-300 px-2 py-1 rounded transition-colors disabled:opacity-40">
                 {isActing ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Yes'}
               </button>
-              <button onClick={() => onConfirm(null)} className="text-xs text-neutral-500 hover:text-neutral-300 px-2 py-1 rounded transition-colors">
-                Cancel
-              </button>
+              <button onClick={() => onConfirm(null)} className="text-xs text-neutral-500 hover:text-neutral-300 px-2 py-1 rounded">Cancel</button>
             </div>
           ) : (
-            <button
-              onClick={() => onConfirm(user.id)}
-              title="Remove user"
-              className="p-1.5 rounded-lg text-neutral-600 hover:text-red-400 hover:bg-red-500/10 transition-colors"
-            >
+            <button onClick={() => onConfirm(user.id)} title="Remove user"
+              className="p-1.5 rounded-lg text-neutral-600 hover:text-red-400 hover:bg-red-500/10 transition-colors">
               <Trash2 className="w-3.5 h-3.5" />
             </button>
           )}

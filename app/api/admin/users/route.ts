@@ -44,6 +44,27 @@ export async function GET() {
   return NextResponse.json(enriched)
 }
 
+// PATCH /api/admin/users  { userId, role }
+export async function PATCH(request: NextRequest) {
+  const supabase = await createClient()
+  const auth = await requireAdmin(supabase)
+  if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
+
+  const { userId, role } = await request.json()
+  if (!userId || !role) return NextResponse.json({ error: 'userId and role are required' }, { status: 400 })
+  if (!['admin', 'manager', 'viewer'].includes(role)) return NextResponse.json({ error: 'Invalid role' }, { status: 400 })
+
+  // Prevent changing your own role
+  const callerUser = 'user' in auth ? auth.user : null
+  if (userId === callerUser?.id) return NextResponse.json({ error: 'You cannot change your own role.' }, { status: 400 })
+
+  const admin = createServiceClient()
+  const { error } = await admin.from('profiles').update({ role }).eq('id', userId)
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  return NextResponse.json({ success: true })
+}
+
 // DELETE /api/admin/users  { userId }
 export async function DELETE(request: NextRequest) {
   const supabase = await createClient()
