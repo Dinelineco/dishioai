@@ -3,9 +3,9 @@ export const dynamic = 'force-dynamic';
 import { useEffect, useState, useCallback } from 'react';
 import { useApp } from '@/context/AppContext';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Building2, UserPlus, Check, Loader2, AlertCircle, Users, Trash2, RefreshCw, Clock, ShieldCheck, Mail } from 'lucide-react';
+import { ArrowLeft, Building2, UserPlus, Check, Loader2, AlertCircle, Users, Trash2, RefreshCw, Clock, ShieldCheck, Mail, UploadCloud } from 'lucide-react';
 
-type Tab = 'restaurant' | 'user' | 'manage';
+type Tab = 'restaurant' | 'user' | 'manage' | 'import';
 
 export default function AdminPage() {
   const { user, isAdmin, authLoading, clients, refreshClients } = useApp();
@@ -30,12 +30,14 @@ export default function AdminPage() {
           <TabButton active={activeTab === 'restaurant'} onClick={() => setActiveTab('restaurant')} icon={<Building2 className="w-4 h-4" />} label="Add Restaurant" />
           <TabButton active={activeTab === 'user'} onClick={() => setActiveTab('user')} icon={<UserPlus className="w-4 h-4" />} label="Invite User" />
           <TabButton active={activeTab === 'manage'} onClick={() => setActiveTab('manage')} icon={<Users className="w-4 h-4" />} label="Manage Users" />
+          <TabButton active={activeTab === 'import'} onClick={() => setActiveTab('import')} icon={<UploadCloud className="w-4 h-4" />} label="Import Data" />
         </div>
       </div>
       <div className="max-w-3xl mx-auto px-6 py-8">
         {activeTab === 'restaurant' && <AddRestaurantForm refreshClients={refreshClients} />}
         {activeTab === 'user' && <InviteUserForm clients={clients} onInvited={() => setActiveTab('manage')} />}
         {activeTab === 'manage' && <ManageUsersPanel currentUserId={user.id} />}
+        {activeTab === 'import' && <ImportDataForm clients={clients} />}
       </div>
     </div>
   );
@@ -379,6 +381,165 @@ function InviteUserForm({ clients, onInvited }: { clients: any[]; onInvited: () 
       <StatusMessage success={success} error={error} successText="Invite sent! Redirecting to users…" />
       <button type="submit" disabled={loading || !form.email} className="w-full flex items-center justify-center gap-2 bg-amber-600 hover:bg-amber-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-medium rounded-lg px-4 py-2.5 text-sm transition-colors">
         {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}{loading ? 'Sending Invite...' : 'Send Invite'}
+      </button>
+    </form>
+  );
+}
+
+// ─── Import Data Form ──────────────────────────────────────────────────────────
+function ImportDataForm({ clients }: { clients: any[] }) {
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState<string>('');
+  const [error, setError] = useState('');
+  const emptyForm = {
+    client_code: '', platform: 'google_ads', campaign_type: 'PERFORMANCE_MAX',
+    campaign_name: '', start_date: '', end_date: '',
+    spend: '', impressions: '', clicks: '', conversions: '', store_visits: '',
+  };
+  const [form, setForm] = useState(emptyForm);
+  const update = (field: string, value: string) => setForm(prev => ({ ...prev, [field]: value }));
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true); setError(''); setSuccess('');
+    try {
+      const res = await fetch('/api/admin/client-data/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          client_code: form.client_code,
+          platform: form.platform,
+          campaign_type: form.campaign_type,
+          campaign_name: form.campaign_name,
+          start_date: form.start_date,
+          end_date: form.end_date,
+          spend: parseFloat(form.spend) || 0,
+          impressions: parseInt(form.impressions) || 0,
+          clicks: parseInt(form.clicks) || 0,
+          conversions: parseFloat(form.conversions) || 0,
+          store_visits: parseInt(form.store_visits) || 0,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Import failed');
+      setSuccess(`✓ Imported ${data.rows_inserted} rows for ${data.client_code} — ${data.period}`);
+      setForm(emptyForm);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <div>
+        <h2 className="text-base font-semibold text-neutral-200 mb-1">Import Ad Data</h2>
+        <p className="text-sm text-neutral-500">Manually import aggregate ad metrics for a client. Totals are distributed evenly across the date range.</p>
+      </div>
+
+      {/* Client + Platform */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-neutral-400 mb-1.5">Client *</label>
+          <select
+            value={form.client_code}
+            onChange={e => update('client_code', e.target.value)}
+            required
+            className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-amber-500/50 focus:border-amber-500/50"
+          >
+            <option value="">Select a client…</option>
+            {clients.map(c => (
+              <option key={c.id} value={c.clientCode}>{c.name} ({c.clientCode})</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-neutral-400 mb-1.5">Platform *</label>
+          <select
+            value={form.platform}
+            onChange={e => update('platform', e.target.value)}
+            className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-amber-500/50 focus:border-amber-500/50"
+          >
+            <option value="google_ads">Google Ads</option>
+            <option value="meta_ads">Meta Ads</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Campaign */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-neutral-400 mb-1.5">Campaign Type</label>
+          <select
+            value={form.campaign_type}
+            onChange={e => update('campaign_type', e.target.value)}
+            className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-amber-500/50 focus:border-amber-500/50"
+          >
+            <option value="PERFORMANCE_MAX">Performance Max</option>
+            <option value="SEARCH">Search</option>
+            <option value="DISPLAY">Display</option>
+            <option value="VIDEO">Video</option>
+            <option value="SHOPPING">Shopping</option>
+            <option value="UNKNOWN">Unknown</option>
+          </select>
+        </div>
+        <FormField
+          label="Campaign Name *"
+          value={form.campaign_name}
+          onChange={v => update('campaign_name', v)}
+          placeholder="e.g. Brand Keywords Q1"
+          required
+        />
+      </div>
+
+      {/* Date Range */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <FormField label="Start Date *" value={form.start_date} onChange={v => update('start_date', v)} type="date" required />
+        <FormField label="End Date *" value={form.end_date} onChange={v => update('end_date', v)} type="date" required />
+      </div>
+
+      {/* Metrics */}
+      <div className="border-t border-neutral-800/40 pt-6">
+        <p className="text-xs font-semibold text-neutral-600 uppercase tracking-widest mb-4">Aggregate Totals for Period</p>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+          <FormField label="Spend ($) *" value={form.spend} onChange={v => update('spend', v)} placeholder="0.00" type="number" required />
+          <FormField label="Impressions *" value={form.impressions} onChange={v => update('impressions', v)} placeholder="0" type="number" required />
+          <FormField label="Clicks *" value={form.clicks} onChange={v => update('clicks', v)} placeholder="0" type="number" required />
+          <FormField label="Conversions" value={form.conversions} onChange={v => update('conversions', v)} placeholder="0" type="number" />
+          <div>
+            <label className="block text-sm font-medium text-amber-400/80 mb-1.5">Store Visits</label>
+            <input
+              type="number"
+              value={form.store_visits}
+              onChange={e => update('store_visits', e.target.value)}
+              placeholder="0"
+              min="0"
+              className="w-full bg-neutral-900 border border-amber-500/30 rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:ring-1 focus:ring-amber-500/50 focus:border-amber-500/50"
+            />
+            <p className="mt-1 text-xs text-neutral-600">Google Ads store visit conversions</p>
+          </div>
+        </div>
+      </div>
+
+      {success && (
+        <div className="flex items-center gap-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-4 py-3 text-sm text-emerald-400">
+          <Check className="w-4 h-4 shrink-0" />{success}
+        </div>
+      )}
+      {error && (
+        <div className="flex items-center gap-2 rounded-lg bg-red-500/10 border border-red-500/20 px-4 py-3 text-sm text-red-400">
+          <AlertCircle className="w-4 h-4 shrink-0" />{error}
+        </div>
+      )}
+
+      <button
+        type="submit"
+        disabled={loading || !form.client_code || !form.campaign_name || !form.start_date || !form.end_date}
+        className="w-full flex items-center justify-center gap-2 bg-amber-600 hover:bg-amber-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-medium rounded-lg px-4 py-2.5 text-sm transition-colors"
+      >
+        {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <UploadCloud className="w-4 h-4" />}
+        {loading ? 'Importing…' : 'Import Data'}
       </button>
     </form>
   );
