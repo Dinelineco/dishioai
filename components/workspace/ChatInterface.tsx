@@ -6,7 +6,7 @@ import { useApp } from '@/context/AppContext';
 import { ActionPresets } from './ActionPresets';
 import { WorkRequestCard } from './WorkRequestCard';
 import { useEffect, useRef, useState } from 'react';
-import { Send, Bot, User } from 'lucide-react';
+import { Send, Bot, User, Mic, MicOff } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 
@@ -28,6 +28,9 @@ export function ChatInterface() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [input, setInput] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const recognitionRef = useRef<any>(null);
+  const baseInputRef = useRef('');
 
   const { messages, status, sendMessage, data } = useChat({
     transport: new DefaultChatTransport({ api: '/api/chat' }),
@@ -55,6 +58,52 @@ export function ChatInterface() {
       { text: message },
       { body: { client_code: selectedClient?.clientCode || null, am_id: amId || 'am_default' } },
     );
+  };
+
+  const toggleMic = () => {
+    if (isRecording) {
+      recognitionRef.current?.stop();
+      setIsRecording(false);
+      return;
+    }
+    const SpeechRecognition =
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) return;
+
+    baseInputRef.current = input;
+    let finalTranscript = '';
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = 'en-US';
+
+    recognition.onresult = (event: any) => {
+      let interim = '';
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        if (event.results[i].isFinal) {
+          finalTranscript += event.results[i][0].transcript;
+        } else {
+          interim += event.results[i][0].transcript;
+        }
+      }
+      const base = baseInputRef.current;
+      const sep = base && (finalTranscript || interim) ? ' ' : '';
+      setInput(base + sep + finalTranscript + interim);
+      // auto-resize textarea
+      if (textareaRef.current) {
+        textareaRef.current.style.height = 'auto';
+        textareaRef.current.style.height =
+          Math.min(textareaRef.current.scrollHeight, 160) + 'px';
+      }
+    };
+
+    recognition.onend = () => setIsRecording(false);
+    recognition.onerror = () => setIsRecording(false);
+
+    recognition.start();
+    recognitionRef.current = recognition;
+    setIsRecording(true);
   };
 
   const isEmpty = messages.length === 0;
@@ -235,7 +284,7 @@ export function ChatInterface() {
                 background: 'var(--s2)',
                 border: '1px solid var(--b2)',
                 borderRadius: 'var(--r-lg)',
-                padding: '13px 52px 13px 16px',
+                padding: '13px 88px 13px 16px',
                 color: 'var(--t1)',
                 minHeight: '50px',
                 maxHeight: '160px',
@@ -249,6 +298,31 @@ export function ChatInterface() {
                 t.style.height = Math.min(t.scrollHeight, 160) + 'px';
               }}
             />
+            {/* Mic button */}
+            <button
+              type="button"
+              onClick={toggleMic}
+              disabled={!selectedClient}
+              title={isRecording ? 'Stop recording' : 'Voice input'}
+              className="absolute right-[46px] bottom-2.5 w-8 h-8 rounded-[8px] flex items-center justify-center transition-all duration-150 disabled:opacity-20 disabled:cursor-not-allowed"
+              style={{
+                background: isRecording ? 'rgba(239,68,68,0.15)' : 'var(--s4)',
+                border: isRecording ? '1px solid rgba(239,68,68,0.5)' : '1px solid var(--b2)',
+              }}
+            >
+              {isRecording ? (
+                <motion.span
+                  animate={{ scale: [1, 1.15, 1] }}
+                  transition={{ duration: 1, repeat: Infinity }}
+                >
+                  <MicOff className="w-3.5 h-3.5" style={{ color: 'rgb(239,68,68)' }} />
+                </motion.span>
+              ) : (
+                <Mic className="w-3.5 h-3.5" style={{ color: 'var(--t3)' }} />
+              )}
+            </button>
+
+            {/* Send button */}
             <button
               onClick={submit}
               disabled={isLoading || !input.trim() || !selectedClient}
