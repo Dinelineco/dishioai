@@ -33,7 +33,7 @@ export default function WorkspacePage() {
   useEffect(() => {
     if (user) {
       fetchDraftCount();
-      const interval = setInterval(fetchDraftCount, 60_000);
+      const interval = setInterval(fetchDraftCount, 30_000);
       return () => clearInterval(interval);
     }
   }, [user, fetchDraftCount]);

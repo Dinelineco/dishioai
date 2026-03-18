@@ -85,24 +85,37 @@ export function CallReviewsView() {
   const [editTitle, setEditTitle] = useState('');
   const [editDesc, setEditDesc] = useState('');
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitResult, setSubmitResult] = useState<{ url?: string; error?: string } | null>(null);
   const [activeTab, setActiveTab] = useState<'recap' | 'draft'>('recap');
 
-  const fetchDrafts = useCallback(async () => {
-    setLoading(true);
+  const fetchDrafts = useCallback(async (background = false) => {
+    if (!background) setLoading(true);
+    else setRefreshing(true);
     try {
       const res = await fetch('/api/call-drafts');
       const data = await res.json();
-      setDrafts(Array.isArray(data) ? data : []);
+      if (Array.isArray(data)) {
+        setDrafts(data);
+        // Keep selected in sync if it was updated elsewhere
+        setSelected(prev => prev ? (data.find((d: CallDraft) => d.id === prev.id) ?? prev) : null);
+      }
     } catch {
-      setDrafts([]);
+      // silently ignore background failures; only clear on initial load failure
+      if (!background) setDrafts([]);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, []);
 
-  useEffect(() => { fetchDrafts(); }, [fetchDrafts]);
+  // Initial fetch + poll every 30s for new drafts from n8n
+  useEffect(() => {
+    fetchDrafts();
+    const interval = setInterval(() => fetchDrafts(true), 30_000);
+    return () => clearInterval(interval);
+  }, [fetchDrafts]);
 
   const selectDraft = (draft: CallDraft) => {
     setSelected(draft);
@@ -153,10 +166,11 @@ export function CallReviewsView() {
             <p className="text-xs text-neutral-600 mt-0.5">{pending.length} pending review</p>
           </div>
           <button
-            onClick={fetchDrafts}
-            className="w-7 h-7 rounded-lg bg-neutral-900 border border-neutral-800 flex items-center justify-center text-neutral-600 hover:text-neutral-300 hover:border-neutral-700 transition-colors"
+            onClick={() => fetchDrafts(false)}
+            disabled={loading || refreshing}
+            className="w-7 h-7 rounded-lg bg-neutral-900 border border-neutral-800 flex items-center justify-center text-neutral-600 hover:text-neutral-300 hover:border-neutral-700 transition-colors disabled:opacity-40"
           >
-            <RefreshCw className="w-3.5 h-3.5" />
+            <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
           </button>
         </div>
 

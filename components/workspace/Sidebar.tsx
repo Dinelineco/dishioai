@@ -49,10 +49,15 @@ export function Sidebar({ activeView, onViewChange, callReviewCount = 0 }: Sideb
 
   useEffect(() => {
     if (!user) return;
-    fetch('/api/conversations?limit=40')
-      .then(r => r.ok ? r.json() : [])
-      .then(data => setSessions(Array.isArray(data) ? data : []))
-      .catch(() => {});
+    const fetchSessions = () => {
+      fetch('/api/conversations?limit=40')
+        .then(r => r.ok ? r.json() : [])
+        .then(data => setSessions(Array.isArray(data) ? data : []))
+        .catch(() => {});
+    };
+    fetchSessions();
+    const interval = setInterval(fetchSessions, 120_000); // refresh every 2 min
+    return () => clearInterval(interval);
   }, [user]);
 
   const formatSessionTime = (iso: string) => {
